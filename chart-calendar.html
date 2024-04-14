@@ -4,6 +4,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Calendar Chart</title>
+
+    <!-- Load jQuery first  -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <!-- Load Select2 CSS  -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+
+    <!-- Load Select2 JS after jQuery  -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Load Pym.js  -->
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
     <style>
         #input-container {
@@ -16,6 +27,7 @@
 
         #input-container label {
             font-weight: 500;
+            margin-bottom: 2.5px;
         }
 
         .input-group {
@@ -23,6 +35,44 @@
             flex-wrap: wrap; /* Allows fields to wrap in smaller screens */
             justify-content: space-between;
             gap: 10px;
+        }
+
+        .region {
+            display: flex;
+            align-items: center; /* Align items vertically in the center */
+            min-width: 317px; /* Minimum width */
+            margin-right: 10px; /* Consistent spacing */
+        }
+
+        .region select {
+            padding: 2px 3px; /* Match padding of input fields */
+            border: 1px solid #989898;
+            border-radius: 2px;
+            background-color: white;
+            width: 100%;
+        }
+
+        /* Adjustments for small screens, below 410px */
+        @media (max-width: 410px) {
+            .region {
+                position: relative;
+                display: flex;
+                flex-direction: column; /* Stack label and input vertically */
+                align-items: flex-start;
+                flex: 1; /* Each field takes equal space */
+                min-width: 180px; /* Prevents fields from becoming too narrow */
+                margin-right: 20px;
+            }
+        }
+
+        /* This ensures that the Select2 container matches the styling of other inputs when initialized */
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #ccc;
+            border-radius: 2px;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            margin-left: 0;
         }
 
         .field {
@@ -86,6 +136,16 @@
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
+    <div class="input-group" style="margin-bottom: 20px;">
+        <div class="region">
+            <label for="id_label_single">Region:</label>
+            <select id="id_label_single" class="region-dropdown">
+                <option value="England">England</option>
+                <option value="Burnley">Burnley</option>
+                <!-- Other options will be loaded here -->
+            </select>
+        </div>
+    </div>
     <div class="input-group">
         <div class="field">
             <label for="income">Annual Income:</label>
@@ -105,6 +165,16 @@
 <div id="calendarchart"></div>
 
 
+<script>
+    $(document).ready(function () {
+        // Initialise Select2
+        $('.region-dropdown').select2({
+            placeholder: "Select a region",
+            allowClear: false
+        });
+    });
+</script>
+
 <!-- d3.js chart -->
 <script type="module">
 
@@ -113,6 +183,21 @@
 
     // Store the reference to the div element
     const chartDiv = document.getElementById('calendarchart');
+
+    // Define the data for each region
+    const regionData = {
+        "England": {
+            income: 29919,
+            rent: 850,
+            freedomDate: new Date(2024, 4, 5)  // Months are zero-indexed in JavaScript (0 = January, 4 = May)
+        },
+        "Burnley": {
+            income: 30436,
+            rent: 476,
+            freedomDate: new Date(2024, 2, 10) // Months are zero-indexed (2 = March)
+        }
+    };
+
 
     // SETUP FUNCTIONS =================================================================================================
     // Define these in the outer scope so they can be accessed by multiple functions
@@ -272,8 +357,8 @@
     }
 
     // PLOTTING FUNCTIONS ==============================================================================================
-    // Draw the heatmap
-    function drawHeatmap(svg, data, xScale, yScale) {
+    // Draw base heatmap
+    function drawBaseHeatmap(svg, data, xScale, yScale) {
         svg.selectAll(".day")
             .data(data)
             .enter()
@@ -288,6 +373,26 @@
             .attr("fill", "#f5f5f5")
             .attr("stroke", "none")
             .attr("stroke-width", 0);
+    }
+
+    // Draw and Update Regional heatmap
+    function drawRegionHeatmap(region) {
+        console.log("Selected Region Key:", region);
+        console.log("Selected Region Data:", regionData[region]);
+        const freedomDate = regionData[region].freedomDate;
+
+        svg.selectAll(".day")
+            .attr("opacity", "0.7")
+            .attr("fill", function (d) {
+                const currentDate = new Date(2024, months.indexOf(d.month), d.day);
+                if (currentDate < freedomDate) {
+                    return "#681F37"; // Before freedom day
+                } else if (currentDate.getTime() === freedomDate.getTime()) {
+                    return "#20435b"; // Freedom day
+                } else {
+                    return "#f5f5f5"; // After freedom day
+                }
+            });
     }
 
     // DRAW CHART ======================================================================================================
@@ -310,33 +415,37 @@
         // Generate and draw heatmap
         const year = 2024; // Leap year example
         const heatmapData = generateHeatmapData(year);
-        drawHeatmap(svg, heatmapData, xScale, yScale);
+        drawBaseHeatmap(svg, heatmapData, xScale, yScale);
+        drawRegionHeatmap('England')
 
         // Adjust text size
         adjustTextSize(scaleFactor);
 
     }
 
-    // UPDATE CHART ======================================================================================================
+    // UPDATE CHART "SELECT" ===========================================================================================
+    // Event listener for region select
+    $('.region-dropdown').on('change', function () {
+        const region = this.value;
+        drawRegionHeatmap(region);
+    });
+
+
+    // UPDATE CHART "ON CLICK" =========================================================================================
     function updateHeatmap(svg, freedomDay) {
-        svg.selectAll(".day")
-            .attr("fill", function (d) {
-                const date = new Date(2024, months.indexOf(d.month), d.day);
-                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
-                return dayOfYear === Math.floor(freedomDay) ? "#233c63" : "#f5f5f5";
-                console.log(dayOfYear)
-            })
-            .attr("stroke", function (d) {
-                const date = new Date(2024, months.indexOf(d.month), d.day);
-                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
-                return dayOfYear === Math.floor(freedomDay) ? "#333333" : "none";
-            })
-            .attr("stroke-width", function (d) {
-                const date = new Date(2024, months.indexOf(d.month), d.day);
-                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
-                return dayOfYear === Math.floor(freedomDay) ? "1.5px" : "0";
-            });
-    }
+    svg.selectAll(".day")
+        .each(function(d) {
+            const date = new Date(2024, months.indexOf(d.month), d.day);
+            const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+            if (dayOfYear === Math.floor(freedomDay)) {
+                d3.select(this)
+                    .attr("fill", "#20435b")  // Change the color for the freedom day
+                    .attr("stroke", "#333333")  // Apply a stroke color
+                    .attr("stroke-width", "1.5px")  // And a stroke width
+                    .attr("opacity", "1");
+            }
+        });
+}
 
     function updateGraph() {
         const income = parseFloat(document.getElementById('income').value);
