@@ -5,11 +5,105 @@
     <meta name="robots" content="noindex,nofollow">
     <title>Calendar Chart</title>
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
+    <style>
+        #input-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        #input-container label {
+            font-weight: 500;
+        }
+
+        .input-group {
+            display: flex;
+            flex-wrap: wrap; /* Allows fields to wrap in smaller screens */
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .field {
+            position: relative;
+            display: flex;
+            flex-direction: column; /* Stack label and input vertically */
+            flex: 1; /* Each field takes equal space */
+            min-width: 180px; /* Prevents fields from becoming too narrow */
+            margin-right: 10px;
+        }
+
+        .field input[type="number"] {
+            padding-left: 20px; /* Make space for the £ symbol */
+        }
+
+        .field::before {
+            content: '£';
+            position: absolute;
+            left: 8px; /* Adjust as needed */
+            top: 50%;
+            pointer-events: none; /* Prevent the £ from blocking input */
+            color: #888; /* Grey out the symbol a bit */
+        }
+
+        .input-group, .button-group {
+            width: 100%; /* Full width for better control */
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end; /* Align button to the right */
+            margin-top: 10px;
+        }
+
+        #input-container label, #input-container input {
+            margin-right: 10px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 7px 10px;
+            background: #333333;
+            color: #ffffff;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button:hover {
+            background: #0a0a0a;
+            cursor: pointer;
+        }
+    </style>
 </head>
 
 <body>
-<!-- Container for the sample chart -->
+
+<div>
+    <h2 style="margin-bottom: 0;">Cost of Rent Freedom Day Calculator</h2>
+    <p style="margin-top: 5px;">Enter your annual income and monthal rental costs below to calculate your cost of rent
+        freedom day and see how you compare to your area.</p>
+</div>
+<!-- Container for the Income and Rental inputs -->
+<div id="input-container">
+    <div class="input-group">
+        <div class="field">
+            <label for="income">Annual Income:</label>
+            <input type="number" id="income" name="income">
+        </div>
+        <div class="field">
+            <label for="rent">Monthly Rent:</label>
+            <input type="number" id="rent" name="rent">
+        </div>
+    </div>
+    <div class="button-group">
+        <button onclick="updateGraph()">Calculate my Freedom Day</button>
+    </div>
+</div>
+
+<!-- Container for the calendar chart -->
 <div id="calendarchart"></div>
+
 
 <!-- Sample Chart (d3.js) -->
 <script type="module">
