@@ -39,7 +39,7 @@
         }
 
         .field::before {
-            content: '£';
+            content: '\00A3';
             position: absolute;
             left: 8px; /* Adjust as needed */
             top: 50%;
@@ -97,7 +97,7 @@
         </div>
     </div>
     <div class="button-group">
-        <button onclick="updateGraph()">Calculate my Freedom Day</button>
+        <button id="calculateButton">Calculate my Freedom Day</button>
     </div>
 </div>
 
@@ -105,7 +105,7 @@
 <div id="calendarchart"></div>
 
 
-<!-- Sample Chart (d3.js) -->
+<!-- d3.js chart -->
 <script type="module">
 
     // Import d3 to use in vanilla HTML (using CDN-hosted ES module bundle)
@@ -246,6 +246,9 @@
     }
 
     // BASE DATA FUNCTIONS =============================================================================================
+    // Set months
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
     // Function to determine the number of days in each month
     function getDaysInMonth(month, year) {
         return new Date(year, month, 0).getDate();
@@ -253,12 +256,11 @@
 
     // Function to generate heat map
     function generateHeatmapData(year) {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const daysInMonths = months.map((_, i) => getDaysInMonth(i + 1, year));
         const heatmapData = [];
 
         months.forEach((month, i) => {
-            for (let day = 1; day <= daysInMonths[i]; day++) {
+            const numDays = getDaysInMonth(i + 1, year);
+            for (let day = 1; day <= numDays; day++) {
                 heatmapData.push({
                     day: day,
                     month: month
@@ -269,6 +271,7 @@
         return heatmapData;
     }
 
+    // PLOTTING FUNCTIONS ==============================================================================================
     // Draw the heatmap
     function drawHeatmap(svg, data, xScale, yScale) {
         svg.selectAll(".day")
@@ -280,11 +283,12 @@
             .attr("y", d => yScale(d.month))
             .attr("width", xScale.bandwidth())
             .attr("height", yScale.bandwidth())
-            .attr("fill", "#f5f5f5");
+            .attr("rx", "2.5px")
+            .attr("ry", "2.5px")
+            .attr("fill", "#f5f5f5")
+            .attr("stroke", "none")
+            .attr("stroke-width", 0);
     }
-
-    // PLOTTING FUNCTIONS ==============================================================================================
-
 
     // DRAW CHART ======================================================================================================
     function drawChart() {
@@ -312,6 +316,54 @@
         adjustTextSize(scaleFactor);
 
     }
+
+    // UPDATE CHART ======================================================================================================
+    function updateHeatmap(svg, freedomDay) {
+        svg.selectAll(".day")
+            .attr("fill", function (d) {
+                const date = new Date(2024, months.indexOf(d.month), d.day);
+                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+                return dayOfYear === Math.floor(freedomDay) ? "#233c63" : "#f5f5f5";
+                console.log(dayOfYear)
+            })
+            .attr("stroke", function (d) {
+                const date = new Date(2024, months.indexOf(d.month), d.day);
+                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+                return dayOfYear === Math.floor(freedomDay) ? "#333333" : "none";
+            })
+            .attr("stroke-width", function (d) {
+                const date = new Date(2024, months.indexOf(d.month), d.day);
+                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+                return dayOfYear === Math.floor(freedomDay) ? "1.5px" : "0";
+            });
+    }
+
+    function updateGraph() {
+        const income = parseFloat(document.getElementById('income').value);
+        const rent = parseFloat(document.getElementById('rent').value);
+
+        if (income && rent) {
+            // Calculate freedom day as per formula
+            const freedomDay = 1 + ((12 * rent) / income) * 365.25;
+            console.log(`Graph updated with income: ${income}, rent: ${rent}, freedom day: ${freedomDay}`);
+            updateHeatmap(svg, freedomDay);
+        } else {
+            alert("Please enter both income and rent values.");
+        }
+    }
+
+    // On Update
+    var calculateButton = document.getElementById("calculateButton") // Get calculateButton Input (onclick equivalient)
+
+    // Assign click event
+    calculateButton.addEventListener("click", function (event) {
+        // Prevent form submission if it's part of a form
+        event.preventDefault();
+
+        // Update graph with new data
+        updateGraph();
+
+    }, false);
 
     // RESPONSIVE CHART ================================================================================================
     // Declare pymChild in the global scope if it's used globally
