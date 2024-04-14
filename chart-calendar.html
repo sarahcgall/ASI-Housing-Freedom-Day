@@ -30,7 +30,7 @@
         const baseWidth = 640;
 
         // Set base height dependent on screen size
-        const aspectRatio = svgWidth > 900 ? 0.312 : svgWidth > 300 ? 0.4 : 1;
+        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
 
         // Calculate base height based on aspect ratio
         const baseHeight = baseWidth * aspectRatio;
@@ -40,26 +40,26 @@
 
         // Calculate margins based on svgWidth
         let margin
-        if (svgWidth < 600) {
+        if (svgWidth < 350) {
             margin = {
-                top: 20,
+                top: 30,
                 right: 10,
                 bottom: 10,
-                left: 40
+                left: 70
             };
-        } else if (svgWidth < 900) {
+        } else if (svgWidth < 650) {
             margin = {
                 top: 20,
                 right: 10,
                 bottom: 10,
-                left: 30
+                left: 50
             };
         } else {
             margin = {
                 top: 20,
                 right: 10,
                 bottom: 10,
-                left: 20
+                left: 30
             };
         }
 
@@ -93,7 +93,7 @@
     function adjustTextSize(scaleFactor) {
         // Tick Text
         d3.selectAll(".tick text")
-            .style("font-size", `${14 * scaleFactor}px`)
+            .style("font-size", `${13 * scaleFactor}px`)
     }
 
     // SCALE & AXES FUNCTIONS ==========================================================================================
@@ -122,7 +122,7 @@
 
     function drawAxes(svg, xScale, yScale, svgWidth) {
         // Determine number of ticks based on the width
-        const maxTicks = svgWidth > 900 ? 31 : svgWidth > 400 ? 10 : 5;
+        const maxTicks = svgWidth > 650 ? 31 : svgWidth > 350 ? 10 : 5;
 
         // Calculate the tick values based on the maximum number of ticks
         let tickValues = xScale.domain().filter(function (d, i) {
