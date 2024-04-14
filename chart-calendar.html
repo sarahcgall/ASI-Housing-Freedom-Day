@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Calendar Chart</title>
+    <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
+</head>
+
+<body>
+<!-- Container for the sample chart -->
+<div id="calendarchart"></div>
+
+<!-- Sample Chart (d3.js) -->
+<script type="module">
+
+    // Import d3 to use in vanilla HTML (using CDN-hosted ES module bundle)
+    import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+    // Store the reference to the div element
+    const chartDiv = document.getElementById('calendarchart');
+
+    // SETUP FUNCTIONS =================================================================================================
+    // Define these in the outer scope so they can be accessed by multiple functions
+    let svg, x, y;
+
+    // Function to adjust margin
+    function setDimensions(svgWidth) {
+        // Set base width of chart area
+        const baseWidth = 640;
+
+        // Set base height dependent on screen size
+        const aspectRatio = svgWidth > 900 ? 0.312 : svgWidth > 300 ? 0.4 : 1;
+
+        // Calculate base height based on aspect ratio
+        const baseHeight = baseWidth * aspectRatio;
+
+        // Calculate scaling factor for responsive designs
+        const scaleFactor = baseWidth / svgWidth;
+
+        // Calculate margins based on svgWidth
+        let margin
+        if (svgWidth < 600) {
+            margin = {
+                top: 20,
+                right: 10,
+                bottom: 10,
+                left: 40
+            };
+        } else if (svgWidth < 900) {
+            margin = {
+                top: 20,
+                right: 10,
+                bottom: 10,
+                left: 30
+            };
+        } else {
+            margin = {
+                top: 20,
+                right: 10,
+                bottom: 10,
+                left: 20
+            };
+        }
+
+        // Calculate width and height using the margins
+        const width = baseWidth - margin.left - margin.right;
+        const height = baseHeight - margin.top - margin.bottom;
+
+        // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+    }
+
+    // Function to set up the
+    function setupSVG(baseWidth, baseHeight, margin) {
+        // Clear previous SVG elements
+        d3.select(chartDiv).select("svg").remove();
+
+        // Create the SVG container with viewBox for responsive sizing
+        const svg = d3.select(chartDiv).append("svg")
+            .attr("viewBox", `0 0 ${baseWidth} ${baseHeight}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("overflow", "hidden")
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        return svg;
+    }
+
+    // Function to adjust text size based on SVG width
+    function adjustTextSize(scaleFactor) {
+        // Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${14 * scaleFactor}px`)
+    }
+
+    // SCALE & AXES FUNCTIONS ==========================================================================================
+    // Function to set up the scales
+    function setupScales(width, height) {
+        // Months array for the Y-axis
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        // Days array for the X-axis (array [1, 2, ..., 31])
+        const days = Array.from({length: 31}, (_, i) => i + 1);
+
+        // Create an ordinal scale for Y-axis (months)
+        const yScale = d3.scaleBand()
+            .domain(months)
+            .range([0, height])
+            .padding(0.05); // Adjust padding to control space between bands
+
+        // Create an ordinal scale for X-axis (days)
+        const xScale = d3.scaleBand()
+            .domain(days)
+            .range([0, width])
+            .padding(0.05); // Adjust padding to control space between bands
+
+        return {xScale, yScale};
+    }
+
+    function drawAxes(svg, xScale, yScale, svgWidth) {
+        // Determine number of ticks based on the width
+        const maxTicks = svgWidth > 900 ? 31 : svgWidth > 400 ? 10 : 5;
+
+        // Calculate the tick values based on the maximum number of ticks
+        let tickValues = xScale.domain().filter(function (d, i) {
+            return !(i % Math.ceil(31 / maxTicks));
+        });
+
+        // Add X-axis at the top
+        const xAxis = d3.axisTop(xScale)
+            .tickValues(tickValues)  // Set custom tick values
+            .tickSize(0); // Hide tick marks
+
+        svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0, 0)`)
+            .call(xAxis)
+            .select(".domain").remove();
+
+        // Add Y-axis
+        const yAxis = d3.axisLeft(yScale)
+            .tickSize(0); // Hide tick marks
+
+        svg.append("g")
+            .attr("class", "y-axis")
+            .attr("transform", `translate(0, 0)`)
+            .call(yAxis)
+            .select(".domain").remove();
+    }
+
+    // BASE DATA FUNCTIONS =============================================================================================
+    // Function to determine the number of days in each month
+    function getDaysInMonth(month, year) {
+        return new Date(year, month, 0).getDate();
+    }
+
+    // Function to generate heat map
+    function generateHeatmapData(year) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const daysInMonths = months.map((_, i) => getDaysInMonth(i + 1, year));
+        const heatmapData = [];
+
+        months.forEach((month, i) => {
+            for (let day = 1; day <= daysInMonths[i]; day++) {
+                heatmapData.push({
+                    day: day,
+                    month: month
+                });
+            }
+        });
+
+        return heatmapData;
+    }
+
+    // Draw the heatmap
+    function drawHeatmap(svg, data, xScale, yScale) {
+        svg.selectAll(".day")
+            .data(data)
+            .enter()
+            .append("rect")
+            .attr("class", "day")
+            .attr("x", d => xScale(d.day))
+            .attr("y", d => yScale(d.month))
+            .attr("width", xScale.bandwidth())
+            .attr("height", yScale.bandwidth())
+            .attr("fill", "#f5f5f5");
+    }
+
+    // PLOTTING FUNCTIONS ==============================================================================================
+
+
+    // DRAW CHART ======================================================================================================
+    function drawChart() {
+        // Use the viewport width to determine width of svg container
+        const svgWidth = chartDiv.clientWidth;
+
+        // Get dimensions parameters from getDimensions function
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
+
+        // Setup SVG using the setupSVG function
+        svg = setupSVG(baseWidth, baseHeight, margin);
+
+        // Setup scales
+        const {xScale, yScale} = setupScales(width, height);
+
+        // Draw axes
+        drawAxes(svg, xScale, yScale, svgWidth);
+
+        // Generate and draw heatmap
+        const year = 2024; // Leap year example
+        const heatmapData = generateHeatmapData(year);
+        drawHeatmap(svg, heatmapData, xScale, yScale);
+
+        // Adjust text size
+        adjustTextSize(scaleFactor);
+
+    }
+
+    // RESPONSIVE CHART ================================================================================================
+    // Declare pymChild in the global scope if it's used globally
+    var pymChild;
+
+    // Function to handle chart drawing and responsive adjustments
+    function responsiveChart() {
+        drawChart(); // Draw chart
+        if (typeof pymChild !== 'undefined') {
+            pymChild.sendHeight(); // Send height to iframe for resize only if pymChild is defined
+        }
+    }
+
+    // Initial Load
+    document.addEventListener("DOMContentLoaded", function () {
+        try {
+            pymChild = new pym.Child({polling: 500}); // Setup with polling interval if needed
+            responsiveChart();
+        } catch (error) {
+            console.error("Error initialising pymChild:", error);
+        }
+    });
+
+    // On Resize
+    d3.select(window).on("resize", responsiveChart);
+
+</script>
+</body>
+</html>
