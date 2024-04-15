@@ -131,8 +131,8 @@
 
 <div>
     <h2 style="margin-bottom: 0;">Cost of Rent Freedom Day Calculator</h2>
-    <p style="margin-top: 5px;">Enter your annual income and monthly rental costs below to calculate your cost of rent
-        freedom day and see how you compare to your area.</p>
+    <p style="margin-top: 5px;">Enter your annual income and monthly rental costs below to calculate your <strong style="color: #20435b;">Cost of Rent
+        Freedom Day</strong> and see how you compare to your area.</p>
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
@@ -372,16 +372,18 @@
             .attr("ry", "2.5px")
             .attr("fill", "#f5f5f5")
             .attr("stroke", "none")
-            .attr("stroke-width", 0);
+            .attr("stroke-width", "0");
     }
+
+    let lastRegion = 'England'
 
     // Draw and Update Regional heatmap
     function drawRegionHeatmap(region) {
-        console.log("Selected Region Key:", region);
-        console.log("Selected Region Data:", regionData[region]);
+        lastRegion = region; // Store last region
         const freedomDate = regionData[region].freedomDate;
 
         svg.selectAll(".day")
+            .attr("stroke-width", "0")
             .attr("opacity", "0.7")
             .attr("fill", function (d) {
                 const currentDate = new Date(2024, months.indexOf(d.month), d.day);
@@ -430,32 +432,41 @@
         drawRegionHeatmap(region);
     });
 
-
     // UPDATE CHART "ON CLICK" =========================================================================================
     function updateHeatmap(svg, freedomDay) {
-    svg.selectAll(".day")
-        .each(function(d) {
-            const date = new Date(2024, months.indexOf(d.month), d.day);
-            const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
-            if (dayOfYear === Math.floor(freedomDay)) {
-                d3.select(this)
-                    .attr("fill", "#20435b")  // Change the color for the freedom day
-                    .attr("stroke", "#333333")  // Apply a stroke color
-                    .attr("stroke-width", "1.5px")  // And a stroke width
-                    .attr("opacity", "1");
-            }
-        });
-}
+        svg.selectAll(".day")
+            .each(function (d) {
+                const date = new Date(2024, months.indexOf(d.month), d.day);
+                const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+                if (dayOfYear === Math.floor(freedomDay)) {
+                    d3.select(this)
+                        .attr("fill", "#20435b")  // Change the color for the freedom day
+                        .attr("stroke", "#333333")  // Apply a stroke color
+                        .attr("stroke-width", "1.5px")  // And a stroke width
+                        .attr("opacity", "1"); // Make opacity 100%
+                }
+            });
+    }
+
+    let lastFreedomDay = null;
 
     function updateGraph() {
         const income = parseFloat(document.getElementById('income').value);
         const rent = parseFloat(document.getElementById('rent').value);
+        console.log("lastFreedomDay = ", lastFreedomDay)
 
         if (income && rent) {
+            if (lastFreedomDay) {
+                // Redraw region data to override previous freedomDay
+                drawRegionHeatmap(lastRegion);
+                svg.selectAll(".day")
+                    .attr("opacity", "0.7")
+                    .attr("stroke", "0")
+            }
             // Calculate freedom day as per formula
             const freedomDay = 1 + ((12 * rent) / income) * 365.25;
-            console.log(`Graph updated with income: ${income}, rent: ${rent}, freedom day: ${freedomDay}`);
             updateHeatmap(svg, freedomDay);
+            lastFreedomDay = freedomDay; // Store last freedomDay
         } else {
             alert("Please enter both income and rent values.");
         }
