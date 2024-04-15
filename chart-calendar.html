@@ -133,6 +133,43 @@
         .day:hover {
             opacity: 1;
         }
+
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: #fafafa; /* Fallback color */
+            background-color: rgba(250, 250, 250, 0.7); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #f5f5f5;
+            border-radius: 5px;
+            width: 80%; /* Could be more or less, depending on screen size */
+            box-shadow: 2px 2px #ccc;
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -173,6 +210,13 @@
 <!-- Container for the calendar chart -->
 <div id="calendarchart"></div>
 
+<!-- Error Message Modal -->
+<div id="errorModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <p id="errorMessage"></p>
+    </div>
+</div>
 
 <script>
     $(document).ready(function () {
@@ -180,6 +224,11 @@
         $('.region-dropdown').select2({
             placeholder: "Select a region",
             allowClear: false
+        });
+
+        // Close modal functionality
+        $('.close-btn').click(function () {
+            $('#errorModal').hide();
         });
     });
 </script>
@@ -506,48 +555,67 @@
                 if (dayOfYear === Math.floor(freedomDay)) {
                     d3.select(this)
                         .attr("fill", "#20435b")  // Change the color for the freedom day
-                        .attr("stroke", "#333333")  // Apply a stroke color
-                        .attr("stroke-width", "1.5px")  // And a stroke width
+                        .attr("stroke", "#20435b")  // Apply a stroke color
+                        .attr("stroke-width", "1px")  // And a stroke width
                         .attr("opacity", "1"); // Make opacity 100%
                 }
             });
     }
 
-    let lastFreedomDay = null;
-
-    function updateGraph() {
-        const income = parseFloat(document.getElementById('income').value);
-        const rent = parseFloat(document.getElementById('rent').value);
-        console.log("lastFreedomDay = ", lastFreedomDay)
-
-        if (income && rent) {
-            if (lastFreedomDay) {
-                // Redraw region data to override previous freedomDay
-                drawRegionHeatmap(lastRegion);
-                svg.selectAll(".day")
-                    .attr("opacity", "0.7")
-                    .attr("stroke", "0")
-            }
-            // Calculate freedom day as per formula
-            const freedomDay = 1 + ((12 * rent) / income) * 365.25;
-            updateHeatmap(svg, freedomDay);
-            lastFreedomDay = freedomDay; // Store last freedomDay
-        } else {
-            alert("Please enter both income and rent values.");
-        }
-    }
-
     // On Update
-    var calculateButton = document.getElementById("calculateButton") // Get calculateButton Input (onclick equivalient)
+    var calculateButton = document.getElementById("calculateButton"); // Get calculateButton Input (onclick equivalent)
+
+    let lastFreedomDay = null;
 
     // Assign click event
     calculateButton.addEventListener("click", function (event) {
-        // Prevent form submission if it's part of a form
-        event.preventDefault();
+        event.preventDefault(); // Prevent form submission if it's part of a form
 
-        // Update graph with new data
-        updateGraph();
+        const income = parseFloat(document.getElementById('income').value);
+        const rent = parseFloat(document.getElementById('rent').value);
+        const monthsInYear = 12;
+        const daysInYear = 365.25;
 
+        // Pre-check if values are entered and valid before disabling button
+        if (income && rent) {
+            // Disable the button to prevent multiple clicks and change button label to "Calculating..."
+            this.disabled = true;
+            this.innerText = 'Calculating...';
+
+            // Delay for simulating processing
+            setTimeout(() => {
+                if (lastFreedomDay) {
+                    // Redraw region data to override previous freedomDay
+                    drawRegionHeatmap(lastRegion);
+                    svg.selectAll(".day")
+                        .attr("opacity", "0.7")
+                        .attr("stroke", "0");
+                }
+
+                // Calculate freedom day
+                const freedomDay = 1 + ((monthsInYear * rent) / income) * daysInYear;
+
+                // Check if freedomDay is within the current year
+                if (freedomDay > daysInYear) {
+                    $('#errorMessage').text('Your Freedom Day goes beyond 2024. Please ensure you have entered your monthly rent, not annual.');
+                    $('#errorModal').show();
+                } else {
+                    // Proceed with updating the heatmap
+                    updateHeatmap(svg, freedomDay);
+                    // Store last freedomDay
+                    lastFreedomDay = freedomDay;
+                }
+
+                // After processing is complete, re-enable the button
+                this.disabled = false;
+                this.innerText = 'Calculate my Freedom Day';
+            }, 1000); // This delay simulates processing and can be adjusted
+
+        } else {
+            // Display error immediately if inputs are not valid
+            $('#errorMessage').text('Both your annual income and monthly rent are required to calculate your Freedom Day. Please enter both values and try again.');
+            $('#errorModal').show();
+        }
     }, false);
 
     // RESPONSIVE CHART ================================================================================================
