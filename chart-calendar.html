@@ -131,7 +131,7 @@
         }
 
         .day:hover {
-            opacity: 1;
+            opacity: 0.7;
         }
 
         .modal {
@@ -172,8 +172,8 @@
         }
 
         .freedom-day {
-            fill: #4C72BE; /* Navy blue color */
-            stroke: #4C72BE; /* Consistent stroke color */
+            fill: #FFC000; /* Navy blue color */
+            stroke: #0a0a0a; /* Consistent stroke color */
             stroke-width: 1px; /* Visibility of the border */
             opacity: 1; /* Fully opaque */
         }
@@ -185,8 +185,8 @@
 <div>
     <h2 style="margin-bottom: 0;">Cost of Rent Day Calculator</h2>
     <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
-        your
-        <strong style="color: #4C72BE;"><i>Cost of Rent Day</i></strong> and see how you compare to your region or local
+        your own
+        <mark style="background-color: #FFC000; white-space: pre"><strong><i> Cost of Rent Day </i></strong></mark> and see how you compare to your region or local
         area.<br>
         <br>
         Hover over the Cost of Rent day for additional information.</p>
@@ -584,7 +584,7 @@
         svg.selectAll(".day")
             .transition(transition) // Apply the defined transition
             .attr("stroke-width", "0")
-            .attr("opacity", "0.7")
+            .attr("opacity", "1")
             .attr("fill", function (d) {
                 const currentDate = new Date(2024, months.indexOf(d.month), d.day);
                 if (currentDate < freedomDate) {
@@ -637,8 +637,9 @@
     function drawLegend(svg, width, height, svgWidth) {
         // Defend legend data
         const legendData = [
-            {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 0.7},
-            {color: '#4C72BE', text: 'Cost of Rent Day', opacity: 0.7}
+            {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 1},
+            {color: '#4C72BE', text: 'Region Cost of Rent Day', opacity: 1}
+            // {color: '#FFC000', text: 'Your Cost of Rent Day', opacity: 1}
         ];
 
         // Create a legend group
@@ -766,8 +767,8 @@
                     selection
                         .transition() // Apply a smooth transition
                         .duration(500)
-                        .attr("fill", "#4C72BE") // Change the color for the freedom day
-                        .attr("stroke", "#4C72BE") // Apply a stroke color
+                        .attr("fill", "#FFC000") // Change the color for the freedom day
+                        .attr("stroke", "#0a0a0a") // Apply a stroke color
                         .attr("stroke-width", "1px") // And a stroke width
                         .attr("opacity", 1) // Make opacity 100%
                         .on("end", () => {
@@ -781,8 +782,8 @@
                                         .style("opacity", 1);
                                     tooltip.html(`
     <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 14px; margin-bottom: 5px">
-            Your Cost of Rent Day is:
+        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px">
+            <mark style="background-color: #FFC000; color: #4F4F4F; white-space: pre"> Your Cost of Rent Day is: </mark>
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
                                         day: 'numeric',
@@ -830,7 +831,7 @@
                     // Redraw region data to override previous freedomDay
                     drawRegionHeatmap(lastRegion);
                     svg.selectAll(".day")
-                        .attr("opacity", "0.7")
+                        .attr("opacity", "1")
                         .attr("stroke", "0");
                 }
 
