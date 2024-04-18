@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>Calendar Chart</title>
+    <title>Cost of Rent Calculator</title>
 
     <!-- Load jQuery first  -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -172,8 +172,8 @@
         }
 
         .freedom-day {
-            fill: #20435b; /* Navy blue color */
-            stroke: #20435b; /* Consistent stroke color */
+            fill: #4C72BE; /* Navy blue color */
+            stroke: #4C72BE; /* Consistent stroke color */
             stroke-width: 1px; /* Visibility of the border */
             opacity: 1; /* Fully opaque */
         }
@@ -183,10 +183,13 @@
 <body>
 
 <div>
-    <h2 style="margin-bottom: 0;">Cost of Rent Freedom Day Calculator</h2>
-    <p style="margin-top: 5px;">Enter your annual income and monthly rental costs below to calculate your
-        <strong style="color: #20435b;"><i>Freedom Day</i></strong> and see how you compare to your region or local
-        area. Hover over the freedom day for additional information.</p>
+    <h2 style="margin-bottom: 0;">Cost of Rent Day Calculator</h2>
+    <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
+        your
+        <strong style="color: #4C72BE;"><i>Cost of Rent Day</i></strong> and see how you compare to your region or local
+        area.<br>
+        <br>
+        Hover over the Cost of Rent day for additional information.</p>
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
@@ -209,7 +212,7 @@
         </div>
     </div>
     <div class="button-group">
-        <button id="calculateButton">Calculate my Freedom Day</button>
+        <button id="calculateButton">Calculate my Cost of Rent Day</button>
     </div>
 </div>
 
@@ -553,7 +556,7 @@
             .attr("height", yScale.bandwidth())
             .attr("rx", "2.5px")
             .attr("ry", "2.5px")
-            .attr("fill", "#f5f5f5")
+            .attr("fill", "#F2F3F4")
             .attr("stroke", "none")
             .attr("stroke-width", "0");
     }
@@ -582,11 +585,11 @@
             .attr("fill", function (d) {
                 const currentDate = new Date(2024, months.indexOf(d.month), d.day);
                 if (currentDate < freedomDate) {
-                    return "#681F37"; // Before freedom day
+                    return "#C00000"; // Before freedom day
                 } else if (currentDate.getTime() === freedomDate.getTime()) {
-                    return "#20435b"; // Freedom day
+                    return "#4C72BE"; // Freedom day
                 } else {
-                    return "#f5f5f5"; // After freedom day
+                    return "#F2F3F4"; // After freedom day
                 }
             })
             .each(function (d) {
@@ -600,8 +603,8 @@
                             tooltip.html(`
                     <p style="margin-bottom: 15px;">
                     <span style="font-weight: bold; font-size: 13px;">${region}'s</span><br><br>
-                        <span style="font-style: italic; font-weight: bold; color: #20435b; font-size: 14px; margin-bottom: 5px">
-                            Freedom Day is:
+                        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 14px; margin-bottom: 5px">
+                            Cost of Rent Day is:
                         </span><br>
                         <strong style="font-size: 16px; margin-top: 5px;">${freedomDate.toLocaleDateString('en-GB', {
                                 day: 'numeric',
@@ -630,8 +633,8 @@
     function drawLegend(svg, width, height) {
         // Defend legend data
         const legendData = [
-            {color: '#681F37', text: 'Rent Day', opacity: 0.7},
-            {color: '#20435b', text: 'Freedom Day', opacity: 0.7}
+            {color: '#C00000', text: 'Rent Day', opacity: 0.7},
+            {color: '#4C72BE', text: 'Cost of Rent Day', opacity: 0.7}
         ];
 
         // Create a legend group
@@ -729,8 +732,8 @@
                     selection
                         .transition() // Apply a smooth transition
                         .duration(500)
-                        .attr("fill", "#20435b") // Change the color for the freedom day
-                        .attr("stroke", "#20435b") // Apply a stroke color
+                        .attr("fill", "#4C72BE") // Change the color for the freedom day
+                        .attr("stroke", "#4C72BE") // Apply a stroke color
                         .attr("stroke-width", "1px") // And a stroke width
                         .attr("opacity", 1) // Make opacity 100%
                         .on("end", () => {
@@ -743,8 +746,8 @@
                                         .style("opacity", 1);
                                     tooltip.html(`
     <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; color: #20435b; font-size: 14px; margin-bottom: 5px">
-            Your Freedom Day is:
+        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 14px; margin-bottom: 5px">
+            Your Cost of Rent Day is:
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
                                         day: 'numeric',
@@ -801,7 +804,7 @@
 
                 // Check if freedomDay is within the current year
                 if (freedomDay > daysInYear) {
-                    $('#errorMessage').text('Your Freedom Day goes beyond 2024. Please ensure you have entered your monthly rent, not annual.');
+                    $('#errorMessage').text('Your Cost of Rent Day goes beyond 2024. Please ensure you have entered your monthly rent, not annual.');
                     $('#errorModal').show();
                 } else {
                     // Proceed with updating the heatmap
@@ -812,12 +815,12 @@
 
                 // After processing is complete, re-enable the button
                 this.disabled = false;
-                this.innerText = 'Calculate my Freedom Day';
+                this.innerText = 'Calculate my Cost of Rent Day';
             }, 750); // This delay simulates processing and can be adjusted
 
         } else {
             // Display error immediately if inputs are not valid
-            $('#errorMessage').text('Both your annual income and monthly rent are required to calculate your Freedom Day. Please enter both values and try again.');
+            $('#errorMessage').text('Both your annual income and monthly rent are required to calculate your Cost of Rent Day. Please enter both values and try again.');
             $('#errorModal').show();
         }
     }, false);
