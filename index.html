@@ -166,7 +166,7 @@
         </div>
         <div style="padding-bottom: 20px;">
             <h5>1. Calendar Chart</h5>
-            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-orange)">IN PROGRESS</span></strong>
+            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-green)">COMPLETE</span></strong>
                 <br>
                 The calendar chart (heatmap) is a Cost of Rent Freedom Day calculator designed to provide users with a
                 visual of how much of their money goes to paying rent each year, based on their annual income and
@@ -179,7 +179,7 @@
                 graph to display the freedom day (in <span style="color: var(--sg-navy);">blue</span>) and the days that
                 they pay their landlords (in <span style="color: var(--sg-red);">red</span>). The region freedom day is
                 based on area's mean or median income and average rental costs as per the ONS data. The dropdown menu is
-                searchable for user-ease in finding their region amongst the 336 different options.<br><br>
+                searchable for user-ease in finding their region or county amongst the 319 different options.<br><br>
 
                 <i style="font-weight: 500;">Freedom Day Calculator</i>: users are able to calculate their own freedom
                 day based on their income and rent using: <code>freedomDay = 1 + ((12 * rent) / income) * 365.25</code>.
@@ -194,10 +194,12 @@
 
                 <i style="font-weight: 500;">Tooltip</i>: a tooltip has been added to the calculated/personal freedom
                 day. It provides the user with their personalised freedom date and details the number of days that they
-                worked to pay their rental bill in 2024.<br><br>
+                worked to pay their rental bill in 2024. Additionally, a tooltip has been added to the regional freedom
+                day which also contains the income and rental information.<br><br>
 
                 <i style="font-weight: 500;">Other Interactivity:</i>: the individual days within the heatmap change
-                opacity when the user hovers over them, creating a more engaging experience for users.
+                opacity when the user hovers over them, creating a more engaging experience for users. There is also a
+                short transitional delay has been added for the chart data to appear gradually.<br><br>
 
                 <i style="font-weight: 500;">Aesthetics</i>: colours chosen have been tested and are colour blind safe.
                 These also aimed at complementing the ASI's colour schemes.<br><br>

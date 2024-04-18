@@ -170,6 +170,13 @@
             text-decoration: none;
             cursor: pointer;
         }
+
+        .freedom-day {
+            fill: #20435b; /* Navy blue color */
+            stroke: #20435b; /* Consistent stroke color */
+            stroke-width: 1px; /* Visibility of the border */
+            opacity: 1; /* Fully opaque */
+        }
     </style>
 </head>
 
@@ -178,7 +185,8 @@
 <div>
     <h2 style="margin-bottom: 0;">Cost of Rent Freedom Day Calculator</h2>
     <p style="margin-top: 5px;">Enter your annual income and monthly rental costs below to calculate your
-        <strong style="color: #20435b;"><i>Freedom Day</i></strong> and see how you compare to your region.</p>
+        <strong style="color: #20435b;"><i>Freedom Day</i></strong> and see how you compare to your region or local
+        area. Hover over the freedom day for additional information.</p>
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
@@ -186,9 +194,7 @@
         <div class="region">
             <label for="id_label_single">Region:</label>
             <select id="id_label_single" class="region-dropdown">
-                <option value="England">England</option>
-                <option value="Burnley">Burnley</option>
-                <!-- Other options will be loaded here -->
+                <!-- Options will be loaded here -->
             </select>
         </div>
     </div>
@@ -241,21 +247,75 @@
 
     // Store the reference to the div element
     const chartDiv = document.getElementById('calendarchart');
+    const regionSelect = document.getElementById('id_label_single');
 
-    // Define the data for each region
-    const regionData = {
-        "England": {
-            income: 29919,
-            rent: 850,
-            freedomDate: new Date(2024, 4, 5)  // Months are zero-indexed in JavaScript (0 = January, 4 = May)
-        },
-        "Burnley": {
-            income: 30436,
-            rent: 476,
-            freedomDate: new Date(2024, 2, 10) // Months are zero-indexed (2 = March)
+    // DATASET =========================================================================================================
+    // Path to your CSV file
+    const csvFile = 'Regional Data.csv'; // Adjust the path as necessary
+
+    // Initialise regionData
+    let regionData = {};
+
+    // Asynchronous function to fetch and process data
+    async function fetchData() {
+        try {
+            const data = await d3.csv(csvFile);
+            data.forEach(d => {
+                // Check if the 'Day of the year', 'Income', and 'Rent' fields are properly populated
+                if (d['Day of the year'] && d['Income'] && d['Rent'] && d['Day of the year'].includes('/')) {
+                    const parts = d['Day of the year'].split('/');
+                    // Validate that the date string is correctly split into [month, day, year]
+                    if (parts.length === 3) {
+                        const [month, day, year] = parts.map(Number);
+                        // Ensure all parts are valid numbers and within typical date ranges
+                        if (!isNaN(month) && month >= 1 && month <= 12 && !isNaN(day) && day >= 1 && day <= 31 && !isNaN(year)) {
+                            regionData[d['Name']] = {
+                                income: Number(d['Income']),
+                                rent: Number(d['Rent']),
+                                freedomDate: new Date(year, month - 1, day)
+                            };
+                        }
+                    }
+                }
+            });
+
+            updateDropdown(data);
+
+        } catch (error) {
+            console.error("Error loading data:", error);
+            return {
+                "England": {
+                    income: 29919,
+                    rent: 850,
+                    freedomDate: new Date(2024, 4, 5)
+                }
+            };
         }
-    };
+    }
 
+    // Function to add dropdown options
+    function updateDropdown(data) {
+        const regionSelect = document.getElementById('id_label_single');
+
+        d3.group(data, d => d.ParentRegion).forEach((values, key) => {
+            const group = document.createElement('optgroup');
+            group.label = key;
+            values.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub['Name'];
+                option.textContent = sub['Name'];
+                // Select England by default
+                if (sub['Name'] === 'England') {
+                    option.selected = true;
+                }
+                group.appendChild(option);
+            });
+            regionSelect.appendChild(group);
+        });
+
+        // Initialise Select2 and set England as the default value
+        $(regionSelect).select2().val('England');
+    }
 
     // SETUP FUNCTIONS =================================================================================================
     // Define these in the outer scope so they can be accessed by multiple functions
@@ -422,6 +482,63 @@
         return heatmapData;
     }
 
+    // TOOLTIP =========================================================================================================
+    // Globacl initialisation of tooltip
+    let tooltip = d3.select(chartDiv).select(".tooltip");
+    if (tooltip.empty()) {
+        tooltip = d3.select(chartDiv)
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("pointer-events", "none")
+            .style("background-color", "white")
+            .style("max-width", "150px")
+            .style("text-align", "center")
+            .style("font-size", "12px")
+            .style("border", "solid 1px #ccc")
+            .style("border-radius", "5px")
+            .style("padding", "10px")
+            .style("box-shadow", "0px 2px 10px rgba(0,0,0,0.1)");
+    }
+
+    // Formatter for adding commas into long numbers
+    const formatter = new Intl.NumberFormat('en-GB', {
+        style: 'decimal',
+        maximumFractionDigits: 0
+    });
+
+    // Function to dynamically adjust tooltip position
+    function adjustTooltipPosition(event, tooltip) {
+        const tooltipWidth = 150; // Approximate width of the tooltip
+        const tooltipHeight = 150; // Approximate height of the tooltip
+        const padding = 20; // Padding from the edges of the viewport
+
+        // Coordinates where the tooltip should appear
+        let xPosition = event.pageX;
+        let yPosition = event.pageY;
+
+        // Check if the tooltip would go out of bounds
+        if (xPosition + tooltipWidth > window.innerWidth) {
+            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+        }
+
+        if (yPosition + tooltipHeight > window.innerHeight) {
+            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+        }
+
+        tooltip
+            .style("left", `${xPosition}px`)
+            .style("top", `${yPosition}px`);
+    }
+
+    function removeTooltip(tooltip) {
+        tooltip
+            .transition()
+            .duration(500)
+            .style("opacity", 0);
+    }
+
     // PLOTTING FUNCTIONS ==============================================================================================
     // Draw base heatmap
     function drawBaseHeatmap(svg, data, xScale, yScale) {
@@ -445,10 +562,21 @@
 
     // Draw and Update Regional heatmap
     function drawRegionHeatmap(region) {
+        if (!regionData[region]) {
+            console.error("No data available for the selected region:", region);
+            return; // Exit the function if no data is available for the selected region
+        }
+
         lastRegion = region; // Store last region
         const freedomDate = regionData[region].freedomDate;
+        const income = regionData[region].income;
+        const rent = regionData[region].rent;
+
+        // Define the transition
+        const transition = svg.transition().duration(500); // 500 milliseconds
 
         svg.selectAll(".day")
+            .transition(transition) // Apply the defined transition
             .attr("stroke-width", "0")
             .attr("opacity", "0.7")
             .attr("fill", function (d) {
@@ -459,6 +587,41 @@
                     return "#20435b"; // Freedom day
                 } else {
                     return "#f5f5f5"; // After freedom day
+                }
+            })
+            .each(function (d) {
+                const currentDate = new Date(2024, months.indexOf(d.month), d.day);
+                if (currentDate.getTime() === freedomDate.getTime()) {
+                    d3.select(this)
+                        .on("mouseover", function (event) {
+                            tooltip.transition()
+                                .duration(200)
+                                .style("opacity", 1);
+                            tooltip.html(`
+                    <p style="margin-bottom: 15px;">
+                    <span style="font-weight: bold; font-size: 13px;">${region}'s</span><br><br>
+                        <span style="font-style: italic; font-weight: bold; color: #20435b; font-size: 14px; margin-bottom: 5px">
+                            Freedom Day is:
+                        </span><br>
+                        <strong style="font-size: 16px; margin-top: 5px;">${freedomDate.toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                            })}</strong>
+                    </p>
+                    <p style="text-align: start; margin-top: 5px; margin-bottom: 0;">
+        This was based on:
+        <ul style="margin-top: 2.5px; padding-left: 20px; text-align: start;">
+            <li><strong>&#163;${formatter.format(income)}</strong> annual income</li>
+            <li><strong>&#163;${formatter.format(rent)}</strong> monthly rent</li>
+        </ul>
+    </p>
+                `)
+                                .style("left", `${event.pageX}px`)
+                                .style("top", `${event.pageY - 28}px`);
+                        })
+                        .on("mousemove", event => adjustTooltipPosition(event, tooltip))
+                        .on("mouseout", () => removeTooltip(tooltip));
                 }
             });
     }
@@ -508,64 +671,6 @@
 
     }
 
-    // TOOLTIP =========================================================================================================
-    // Globacl initialisation of tooltip
-    let tooltip = d3.select(chartDiv).select(".tooltip");
-    if (tooltip.empty()) {
-        tooltip = d3.select(chartDiv)
-            .append("div")
-            .attr("class", "tooltip")
-            .style("opacity", 0)
-            .style("position", "absolute")
-            .style("pointer-events", "none")
-            .style("background-color", "white")
-            .style("max-width", "150px")
-            .style("text-align", "center")
-            .style("font-size", "12px")
-            .style("border", "solid 1px #ccc")
-            .style("border-radius", "5px")
-            .style("padding", "10px")
-            .style("box-shadow", "0px 2px 10px rgba(0,0,0,0.1)");
-    }
-
-    // Formatter for adding commas into long numbers
-        const formatter = new Intl.NumberFormat('en-GB', {
-            style: 'decimal',
-            maximumFractionDigits: 0
-        });
-
-    // Function to dynamically adjust tooltip position
-    function adjustTooltipPosition(event, tooltip) {
-        const tooltipWidth = 150; // Approximate width of the tooltip
-        const tooltipHeight = 150; // Approximate height of the tooltip
-        const padding = 20; // Padding from the edges of the viewport
-
-        // Coordinates where the tooltip should appear
-        let xPosition = event.pageX;
-        let yPosition = event.pageY;
-
-        // Check if the tooltip would go out of bounds
-        if (xPosition + tooltipWidth > window.innerWidth) {
-            xPosition = event.pageX - tooltipWidth; // Flip to the left side
-        }
-
-        if (yPosition + tooltipHeight > window.innerHeight) {
-            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
-        }
-
-        tooltip
-            .style("left", `${xPosition}px`)
-            .style("top", `${yPosition}px`);
-    }
-
-    function removeTooltip(tooltip) {
-        tooltip
-            .transition()
-            .duration(500)
-            .style("opacity", 0);
-    }
-
-
     // DRAW CHART ======================================================================================================
     function drawChart() {
         // Use the viewport width to determine width of svg container
@@ -584,10 +689,15 @@
         drawAxes(svg, xScale, yScale, svgWidth);
 
         // Generate and draw heatmap
-        const year = 2024; // Leap year example
-        const heatmapData = generateHeatmapData(year);
-        drawBaseHeatmap(svg, heatmapData, xScale, yScale);
-        drawRegionHeatmap('England')
+        drawBaseHeatmap(svg, generateHeatmapData(2024), xScale, yScale);
+
+        // Always redraw the region heatmap to maintain consistent region data display
+        if (lastRegion) drawRegionHeatmap(lastRegion);
+
+        // Reapply last personal freedom day coloring after all other drawing functions
+        if (lastFreedomDay) {
+            updateHeatmap(svg, lastFreedomDay, lastFreedomDay.income, lastFreedomDay.rent);
+        }
 
         // Add Legend
         drawLegend(svg, width, height);
@@ -597,58 +707,61 @@
 
     }
 
-    // UPDATE CHART "SELECT" ===========================================================================================
-    // Event listener for region select
-    $('.region-dropdown').on('change', function () {
-        const region = this.value;
-        drawRegionHeatmap(region);
+    // UPDATE CHART "ON SELECT" ========================================================================================
+    // Event handler for region selection
+    $(regionSelect).on('change', function () {
+        const selectedRegion = this.value;
+        drawRegionHeatmap(selectedRegion);
     });
 
     // UPDATE CHART "ON CLICK" =========================================================================================
-    // <p style="text-align: start; margin-top: 5px; margin-bottom: 0;">
-    //     This was based on:
-    //     <ul style="margin-top: 2.5px; padding-left: 20px;">
-    //         <li>annual income of <strong>£${formatter.format(income)}</strong></li>
-    //         <li>monthly rent of <strong>£${formatter.format(rent)}</strong></li>
-    //     </ul>
-    // </p>
-
     function updateHeatmap(svg, freedomDay, income, rent) {
+        svg.selectAll(".day").classed("freedom-day", false);  // Remove the class from all days
+
         // Apply updates to each day rect
         svg.selectAll(".day")
             .each(function (d) {
                 const date = new Date(2024, months.indexOf(d.month), d.day);
                 const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
+
                 if (dayOfYear === Math.floor(freedomDay)) {
-                    d3.select(this)
+                    const selection = d3.select(this);
+                    selection
+                        .transition() // Apply a smooth transition
+                        .duration(500)
                         .attr("fill", "#20435b") // Change the color for the freedom day
                         .attr("stroke", "#20435b") // Apply a stroke color
                         .attr("stroke-width", "1px") // And a stroke width
                         .attr("opacity", 1) // Make opacity 100%
-                        .on("mouseover", function (event) {
-                            tooltip.transition()
-                                .duration(200)
-                                .style("opacity", 1);
-                            tooltip.html(`
+                        .on("end", () => {
+                            selection.classed("freedom-day", true); // Apply the class after transition
+                            // Add event listeners after transition
+                            selection
+                                .on("mouseover", function (event) {
+                                    tooltip.transition()
+                                        .duration(200)
+                                        .style("opacity", 1);
+                                    tooltip.html(`
     <p style="margin-bottom: 15px;">
         <span style="font-style: italic; font-weight: bold; color: #20435b; font-size: 14px; margin-bottom: 5px">
             Your Freedom Day is:
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        })}</strong>
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    })}</strong>
     </p>
     <p>
     This means that in 2024, you worked <strong>${freedomDay.toFixed(0) - 1} days</strong> to pay for your rental bill.
     </p>
 `)
-                                .style("left", (event.pageX) + "px")
-                                .style("top", (event.pageY - 28) + "px");
-                        })
-                        .on("mousemove", event => adjustTooltipPosition(event, tooltip))
-                        .on("mouseout", () => removeTooltip(tooltip));
+                                        .style("left", (event.pageX) + "px")
+                                        .style("top", (event.pageY - 28) + "px");
+                                })
+                                .on("mousemove", event => adjustTooltipPosition(event, tooltip))
+                                .on("mouseout", () => removeTooltip(tooltip));
+                        });
                 }
             });
     }
@@ -700,7 +813,7 @@
                 // After processing is complete, re-enable the button
                 this.disabled = false;
                 this.innerText = 'Calculate my Freedom Day';
-            }, 1000); // This delay simulates processing and can be adjusted
+            }, 750); // This delay simulates processing and can be adjusted
 
         } else {
             // Display error immediately if inputs are not valid
@@ -713,9 +826,25 @@
     // Declare pymChild in the global scope if it's used globally
     var pymChild;
 
-    // Function to handle chart drawing and responsive adjustments
+    // Function to initialise and load data (only once)
+    async function initialiseChart() {
+        await fetchData(); // Load and parse the data
+        if (Object.keys(regionData).length === 0) {
+            console.error("No data available to draw the chart.");
+            return; // Exit if data is not available
+        }
+        responsiveChart();
+    }
+
+    // Function to draw the chart and handle responsiveness
     function responsiveChart() {
-        drawChart(); // Draw chart
+        if (Object.keys(regionData).length === 0) {
+            console.error("Data not ready when responsiveChart called.");
+            return;
+        }
+
+        drawChart(); // draw the chart
+
         if (typeof pymChild !== 'undefined') {
             pymChild.sendHeight(); // Send height to iframe for resize only if pymChild is defined
         }
@@ -725,7 +854,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         try {
             pymChild = new pym.Child({polling: 500}); // Setup with polling interval if needed
-            responsiveChart();
+            initialiseChart();
         } catch (error) {
             console.error("Error initialising pymChild:", error);
         }
