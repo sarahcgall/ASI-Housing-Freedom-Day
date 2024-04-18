@@ -186,7 +186,8 @@
     <h2 style="margin-bottom: 0;">Cost of Rent Day Calculator</h2>
     <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
         your own
-        <mark style="background-color: #FFC000; white-space: pre"><strong><i> Cost of Rent Day </i></strong></mark> and see how you compare to your region or local
+        <strong style="white-space: pre;"><i> Cost of Rent Day </i></strong> and see how you compare to your region or
+        local
         area.<br>
         <br>
         Hover over the Cost of Rent day for additional information.</p>
@@ -252,13 +253,16 @@
     const chartDiv = document.getElementById('calendarchart');
     const regionSelect = document.getElementById('id_label_single');
 
+    // Declaring variables
+    const calendarYear = 2024;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
+    const csvFile = 'Regional Data.csv'; // Path to your CSV file
+    let regionData = {}; // Initialise regionData
+    let svg, x, y; // Define svg, x, and y
+    let lastRegion = 'England' // store most recent region (on load = England)
+    let lastFreedomDay = null; // store most recent freedomDay
+
     // DATASET =========================================================================================================
-    // Path to your CSV file
-    const csvFile = 'Regional Data.csv'; // Adjust the path as necessary
-
-    // Initialise regionData
-    let regionData = {};
-
     // Asynchronous function to fetch and process data
     async function fetchData() {
         try {
@@ -290,7 +294,7 @@
                 "England": {
                     income: 29919,
                     rent: 850,
-                    freedomDate: new Date(2024, 4, 5)
+                    freedomDate: new Date(calendarYear, 4, 5)
                 }
             };
         }
@@ -321,9 +325,6 @@
     }
 
     // SETUP FUNCTIONS =================================================================================================
-    // Define these in the outer scope so they can be accessed by multiple functions
-    let svg, x, y;
-
     // Function to adjust margin
     function setDimensions(svgWidth) {
         // Set base width of chart area
@@ -344,21 +345,21 @@
             margin = {
                 top: 30,
                 right: 10,
-                bottom: 160,
+                bottom: 200,
                 left: 80
             };
         } else if (svgWidth < 650) {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 80,
+                bottom: 150,
                 left: 50
             };
         } else {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 60,
+                bottom: 100,
                 left: 30
             };
         }
@@ -392,7 +393,8 @@
     // Function to adjust text size based on SVG width
     function adjustTextSize(scaleFactor) {
         // Determine wrapping width based on screen size
-        const spacing = window.innerWidth > 350 ? 160: 110
+        const spacing = window.innerWidth > 350 ? 160 : 110
+        const smallSpacingFactor = 0.5;
 
         // Legend
         d3.selectAll(".legendEntry text")
@@ -400,7 +402,22 @@
 
         // adjust legend position
         d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
+            .attr("transform", (d, i) => {
+            let space;
+            if (i === 0) {
+                space = 0;
+            } else if (i === 1) {
+                space = spacing;
+            } else if (i === 2) {
+                space = spacing + spacing * smallSpacingFactor;
+            }
+            return `translate(${space * scaleFactor}, 0)`;
+        });
+
+        // adjust legend title
+        d3.selectAll(".legendTitle")
+            .attr("x", spacing * scaleFactor)
+            .style("font-size", `${14 * scaleFactor}px`);
 
         // Tick Text
         d3.selectAll(".tick text")
@@ -410,9 +427,6 @@
     // SCALE & AXES FUNCTIONS ==========================================================================================
     // Function to set up the scales
     function setupScales(width, height) {
-        // Months array for the Y-axis
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
         // Days array for the X-axis (array [1, 2, ..., 31])
         const days = Array.from({length: 31}, (_, i) => i + 1);
 
@@ -463,9 +477,6 @@
     }
 
     // BASE DATA FUNCTIONS =============================================================================================
-    // Set months
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
     // Function to determine the number of days in each month
     function getDaysInMonth(month, year) {
         return new Date(year, month, 0).getDate();
@@ -564,8 +575,6 @@
             .attr("stroke-width", "0");
     }
 
-    let lastRegion = 'England'
-
     // Draw and Update Regional heatmap
     function drawRegionHeatmap(region) {
         if (!regionData[region]) {
@@ -586,7 +595,7 @@
             .attr("stroke-width", "0")
             .attr("opacity", "1")
             .attr("fill", function (d) {
-                const currentDate = new Date(2024, months.indexOf(d.month), d.day);
+                const currentDate = new Date(calendarYear, months.indexOf(d.month), d.day);
                 if (currentDate < freedomDate) {
                     return "#C00000"; // Before freedom day
                 } else if (currentDate.getTime() === freedomDate.getTime()) {
@@ -596,7 +605,7 @@
                 }
             })
             .each(function (d) {
-                const currentDate = new Date(2024, months.indexOf(d.month), d.day);
+                const currentDate = new Date(calendarYear, months.indexOf(d.month), d.day);
                 if (currentDate.getTime() === freedomDate.getTime()) {
                     d3.select(this)
                         .on("mouseover", function (event) {
@@ -638,8 +647,8 @@
         // Defend legend data
         const legendData = [
             {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 1},
-            {color: '#4C72BE', text: 'Region Cost of Rent Day', opacity: 1}
-            // {color: '#FFC000', text: 'Your Cost of Rent Day', opacity: 1}
+            {color: '#4C72BE', text: 'Region', opacity: 1},
+            {color: '#FFC000', text: 'Your', opacity: 1},
         ];
 
         // Create a legend group
@@ -647,21 +656,20 @@
             .attr("transform", `translate(10, ${height + 7.5})`);
 
         // Determine wrapping width based on screen size
-        const wrapWidth = window.innerWidth > 350 ? 100: 80
+        const wrapWidth = window.innerWidth > 350 ? 100 : 80
 
         // Add legend entries
         legend.selectAll("legendEntry")
             .data(legendData)
             .enter()
             .append("g")
-            .attr("class", "legendEntry")
-            .attr("transform", (d, i) => `translate(${i * 80}, 0)`);
+            .attr("class", "legendEntry");
 
         // Draw legend rectangles
         legend.selectAll(".legendEntry")
             .append("rect")
             .attr("x", 0)
-            .attr("y", 0)
+            .attr("y", 20)
             .attr("width", 15)
             .attr("height", 15)
             .attr("rx", 2)
@@ -669,11 +677,21 @@
             .style("fill", d => d.color)
             .style("opacity", d => d.opacity);
 
+        // Add "Cost of Rent Day" title before the desired legend entries
+        legend.append("text")
+            .attr("class", "legendTitle")
+            .attr("y", 7) // the title where it fits the best
+            .text('Cost of Rent Day:')
+            .attr("text-anchor", "start")
+            .attr("alignment-baseline", "middle")
+            .style("font-weight","500")
+            .style("fill", "#333");
+
         // Add legend text
         legend.selectAll(".legendEntry")
             .append("text")
             .attr("x", 20)
-            .attr("y", 12)
+            .attr("y", 32)
             .attr("text-anchor", "start")
             .attr("alignment-baseline", "start")
             .text(d => d.text)
@@ -685,7 +703,7 @@
     // Function to wrap text if it's too long
     function wrap(text, width) {
         text.each(function () {
-            var text = d3.select(this),
+            let text = d3.select(this),
                 words = text.text().split(/\s+/).reverse(),
                 word,
                 line = [],
@@ -727,7 +745,7 @@
         drawAxes(svg, xScale, yScale, svgWidth);
 
         // Generate and draw heatmap
-        drawBaseHeatmap(svg, generateHeatmapData(2024), xScale, yScale);
+        drawBaseHeatmap(svg, generateHeatmapData(calendarYear), xScale, yScale);
 
         // Always redraw the region heatmap to maintain consistent region data display
         if (lastRegion) drawRegionHeatmap(lastRegion);
@@ -759,7 +777,7 @@
         // Apply updates to each day rect
         svg.selectAll(".day")
             .each(function (d) {
-                const date = new Date(2024, months.indexOf(d.month), d.day);
+                const date = new Date(calendarYear, months.indexOf(d.month), d.day);
                 const dayOfYear = d3.timeDay.count(d3.timeYear(date), date);
 
                 if (dayOfYear === Math.floor(freedomDay)) {
@@ -782,8 +800,8 @@
                                         .style("opacity", 1);
                                     tooltip.html(`
     <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px">
-            <mark style="background-color: #FFC000; color: #4F4F4F; white-space: pre"> Your Cost of Rent Day is: </mark>
+        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px; background-color: #FFC000; color: #0a0a0a;">
+             Your Cost of Rent Day is:
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
                                         day: 'numeric',
@@ -806,9 +824,7 @@
     }
 
     // On Update
-    var calculateButton = document.getElementById("calculateButton"); // Get calculateButton Input (onclick equivalent)
-
-    let lastFreedomDay = null;
+    const calculateButton = document.getElementById("calculateButton"); // Get calculateButton Input (onclick equivalent)
 
     // Assign click event
     calculateButton.addEventListener("click", function (event) {

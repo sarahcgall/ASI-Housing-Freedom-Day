@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Cost of Rent Histogram</title>
+
+    <!-- Load Pym.js  -->
+    <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
+</head>
+
+<body>
+
+<div>
+    <h2 style="margin-bottom: 0;">Title</h2>
+    <p style="margin-top: 5px;">Subtitle</p>
+</div>
+
+<!-- Container for the calendar chart -->
+<div id="calendarchart"></div>
+
+<!-- d3.js chart -->
+<script type="module">
+
+    // Import d3 to use in vanilla HTML (using CDN-hosted ES module bundle)
+    import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+    // Store the reference to the div element
+    const chartDiv = document.getElementById('calendarchart');
+
+    // Declaring variables
+    const calendarYear = 2024;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
+    const csvFile = 'Regional Data.csv'; // Path to your CSV file
+    let regionData = []; // Initialise regionData
+    let svg, x, y; // Define svg, x, and y
+    let lastRegion = 'England' // store most recent region (on load = England)
+    let lastFreedomDay = null; // store most recent freedomDay
+
+    // DATASET =========================================================================================================
+    // Asynchronous function to fetch and process data
+    async function fetchData() {
+        try {
+            const rawData = await d3.csv(csvFile);
+            // Filter Counties only and remove NAs/missing values from Day of the year
+            const filteredData = rawData.filter(function (d) {
+                return d.Category === "County" && d["Day of the year"];
+            });
+            const parsedData = filteredData.map(d => {
+                // Parse the date once, use for both
+                const date = d3.timeParse("%m/%d/%Y")(d["Day of the year"]);
+                return [
+                    {
+                        region: d.ParentRegion,
+                        countyName: d.Name,
+                        freedomDate: date,
+                        proportion: +d["Rent as a share of income"]
+                    },
+                ];
+            }).flat(); // Flatten the array of arrays into a single array
+            console.log(parsedData)
+            return parsedData;
+        } catch (error) {
+            console.error("Error loading data:", error);
+            return [];
+        }
+    }
+
+    // SETUP FUNCTIONS =================================================================================================
+    // Function to adjust margin
+    function setDimensions(svgWidth) {
+        // Set base width of chart area
+        const baseWidth = 640;
+
+        // Set base height dependent on screen size
+        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
+
+        // Calculate base height based on aspect ratio
+        const baseHeight = baseWidth * aspectRatio;
+
+        // Calculate scaling factor for responsive designs
+        const scaleFactor = baseWidth / svgWidth;
+
+        // Calculate margins based on svgWidth
+        let margin
+        if (svgWidth < 350) {
+            margin = {
+                top: 30,
+                right: 10,
+                bottom: 160,
+                left: 80
+            };
+        } else if (svgWidth < 650) {
+            margin = {
+                top: 20,
+                right: 10,
+                bottom: 80,
+                left: 50
+            };
+        } else {
+            margin = {
+                top: 20,
+                right: 10,
+                bottom: 60,
+                left: 30
+            };
+        }
+
+        // Calculate width and height using the margins
+        const width = baseWidth - margin.left - margin.right;
+        const height = baseHeight - margin.top - margin.bottom;
+
+        // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+    }
+
+    // Function to set up the
+    function setupSVG(baseWidth, baseHeight, margin) {
+        // Clear previous SVG elements
+        d3.select(chartDiv).select("svg").remove();
+
+        // Create the SVG container with viewBox for responsive sizing
+        const svg = d3.select(chartDiv).append("svg")
+            .attr("viewBox", `0 0 ${baseWidth} ${baseHeight}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("overflow", "hidden")
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        return svg;
+    }
+
+    // Function to adjust text size based on SVG width
+    function adjustTextSize(scaleFactor) {
+        // Determine wrapping width based on screen size
+        const spacing = window.innerWidth > 350 ? 160 : 110
+
+        // Legend
+        d3.selectAll(".legendEntry text")
+            .style("font-size", `${14 * scaleFactor}px`);
+
+        // adjust legend position
+        d3.selectAll(".legendEntry")
+            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
+
+        // Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${13 * scaleFactor}px`)
+    }
+
+    // SCALE & AXES FUNCTIONS ==========================================================================================
+    // Function to set up the scales
+    function setupScales(width, height) {
+        // Days array for the X-axis (array [1, 2, ..., 31])
+        const days = Array.from({length: 31}, (_, i) => i + 1);
+
+        // Create an ordinal scale for Y-axis (months)
+        const yScale = d3.scaleBand()
+            .domain(months)
+            .range([0, height])
+            .padding(0.05); // Adjust padding to control space between bands
+
+        // Create an ordinal scale for X-axis (days)
+        const xScale = d3.scaleBand()
+            .domain(days)
+            .range([0, width])
+            .padding(0.05); // Adjust padding to control space between bands
+
+        return {xScale, yScale};
+    }
+
+    function drawAxes(svg, xScale, yScale, svgWidth) {
+        // Determine number of ticks based on the width
+        const maxTicks = svgWidth > 650 ? 31 : svgWidth > 350 ? 10 : 5;
+
+        // Calculate the tick values based on the maximum number of ticks
+        let tickValues = xScale.domain().filter(function (d, i) {
+            return !(i % Math.ceil(31 / maxTicks));
+        });
+
+        // Add X-axis at the top
+        const xAxis = d3.axisTop(xScale)
+            .tickValues(tickValues)  // Set custom tick values
+            .tickSize(0); // Hide tick marks
+
+        svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0, 0)`)
+            .call(xAxis)
+            .select(".domain").remove();
+
+        // Add Y-axis
+        const yAxis = d3.axisLeft(yScale)
+            .tickSize(0); // Hide tick marks
+
+        svg.append("g")
+            .attr("class", "y-axis")
+            .attr("transform", `translate(0, 0)`)
+            .call(yAxis)
+            .select(".domain").remove();
+    }
+
+    // BASE DATA FUNCTIONS =============================================================================================
+    // Function to determine the number of days in each month
+    function getDaysInMonth(month, year) {
+        return new Date(year, month, 0).getDate();
+    }
+
+    // Function to generate heat map
+    function generateHeatmapData(year) {
+        const heatmapData = [];
+
+        months.forEach((month, i) => {
+            const numDays = getDaysInMonth(i + 1, year);
+            for (let day = 1; day <= numDays; day++) {
+                heatmapData.push({
+                    day: day,
+                    month: month
+                });
+            }
+        });
+
+        return heatmapData;
+    }
+
+    // TOOLTIP =========================================================================================================
+    // Globacl initialisation of tooltip
+    let tooltip = d3.select(chartDiv).select(".tooltip");
+    if (tooltip.empty()) {
+        tooltip = d3.select(chartDiv)
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("pointer-events", "none")
+            .style("background-color", "white")
+            .style("max-width", "150px")
+            .style("text-align", "center")
+            .style("font-size", "12px")
+            .style("border", "solid 1px #ccc")
+            .style("border-radius", "5px")
+            .style("padding", "10px")
+            .style("box-shadow", "0px 2px 10px rgba(0,0,0,0.1)");
+    }
+
+    // Formatter for adding commas into long numbers
+    const formatter = new Intl.NumberFormat('en-GB', {
+        style: 'decimal',
+        maximumFractionDigits: 0
+    });
+
+    // Function to dynamically adjust tooltip position
+    function adjustTooltipPosition(event, tooltip) {
+        const tooltipWidth = 150; // Approximate width of the tooltip
+        const tooltipHeight = 150; // Approximate height of the tooltip
+        const padding = 20; // Padding from the edges of the viewport
+
+        // Coordinates where the tooltip should appear
+        let xPosition = event.pageX;
+        let yPosition = event.pageY;
+
+        // Check if the tooltip would go out of bounds
+        if (xPosition + tooltipWidth > window.innerWidth) {
+            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+        }
+
+        if (yPosition + tooltipHeight > window.innerHeight) {
+            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+        }
+
+        tooltip
+            .style("left", `${xPosition}px`)
+            .style("top", `${yPosition}px`);
+    }
+
+    function removeTooltip(tooltip) {
+        tooltip
+            .transition()
+            .duration(500)
+            .style("opacity", 0);
+    }
+
+    // PLOTTING FUNCTIONS ==============================================================================================
+
+
+
+    // LEGEND ==========================================================================================================
+    // Add Legend
+
+
+    // DRAW CHART ======================================================================================================
+    function drawChart() {
+        // Use the viewport width to determine width of svg container
+        const svgWidth = chartDiv.clientWidth;
+
+        // Get dimensions parameters from getDimensions function
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
+
+        // Setup SVG using the setupSVG function
+        svg = setupSVG(baseWidth, baseHeight, margin);
+
+        // Setup scales
+        const {xScale, yScale} = setupScales(width, height);
+
+        // Draw axes
+        drawAxes(svg, xScale, yScale, svgWidth);
+
+        // Adjust text size
+        adjustTextSize(scaleFactor);
+
+    }
+
+    // RESPONSIVE CHART ================================================================================================
+    // Declare pymChild in the global scope if it's used globally
+    var pymChild;
+
+    // Function to initialise and load data (only once)
+    async function initialiseChart() {
+        regionData = await fetchData(); // Load and parse the data
+        if (Object.keys(regionData).length === 0) {
+            console.error("No data available to draw the chart.");
+            return; // Exit if data is not available
+        }
+        responsiveChart();
+    }
+
+    // Function to draw the chart and handle responsiveness
+    function responsiveChart() {
+        if (Object.keys(regionData).length === 0) {
+            console.error("Data not ready when responsiveChart called.");
+            return;
+        }
+
+        drawChart(); // draw the chart
+
+        if (typeof pymChild !== 'undefined') {
+            pymChild.sendHeight(); // Send height to iframe for resize only if pymChild is defined
+        }
+    }
+
+    // Initial Load
+    document.addEventListener("DOMContentLoaded", function () {
+        try {
+            pymChild = new pym.Child({polling: 500}); // Setup with polling interval if needed
+            initialiseChart();
+        } catch (error) {
+            console.error("Error initialising pymChild:", error);
+        }
+    });
+
+    // On Resize
+    d3.select(window).on("resize", responsiveChart);
+
+</script>
+</body>
+</html>
