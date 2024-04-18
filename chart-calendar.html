@@ -344,21 +344,21 @@
             margin = {
                 top: 30,
                 right: 10,
-                bottom: 90,
+                bottom: 160,
                 left: 80
             };
         } else if (svgWidth < 650) {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 60,
+                bottom: 80,
                 left: 50
             };
         } else {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 40,
+                bottom: 60,
                 left: 30
             };
         }
@@ -391,13 +391,16 @@
 
     // Function to adjust text size based on SVG width
     function adjustTextSize(scaleFactor) {
+        // Determine wrapping width based on screen size
+        const spacing = window.innerWidth > 350 ? 140: 100
+
         // Legend
         d3.selectAll(".legendEntry text")
             .style("font-size", `${14 * scaleFactor}px`);
 
         // adjust legend position
         d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * 110 * scaleFactor}, 0)`);
+            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
 
         // Tick Text
         d3.selectAll(".tick text")
@@ -629,17 +632,21 @@
             });
     }
 
+    // LEGEND ==========================================================================================================
     // Add Legend
-    function drawLegend(svg, width, height) {
+    function drawLegend(svg, width, height, svgWidth) {
         // Defend legend data
         const legendData = [
-            {color: '#C00000', text: 'Rent Day', opacity: 0.7},
+            {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 0.7},
             {color: '#4C72BE', text: 'Cost of Rent Day', opacity: 0.7}
         ];
 
         // Create a legend group
         const legend = svg.append("g")
             .attr("transform", `translate(10, ${height + 7.5})`);
+
+        // Determine wrapping width based on screen size
+        const wrapWidth = window.innerWidth > 350 ? 100: 80
 
         // Add legend entries
         legend.selectAll("legendEntry")
@@ -665,13 +672,40 @@
         legend.selectAll(".legendEntry")
             .append("text")
             .attr("x", 20)
-            .attr("y", 10)
+            .attr("y", 12)
             .attr("text-anchor", "start")
-            .attr("alignment-baseline", "middle")
+            .attr("alignment-baseline", "start")
             .text(d => d.text)
             .style("font-size", "12px")
-            .style("fill", "#333");
+            .style("fill", "#333")
+            .call(wrap, wrapWidth);
+    }
 
+    // Function to wrap text if it's too long
+    function wrap(text, width) {
+        text.each(function () {
+            var text = d3.select(this),
+                words = text.text().split(/\s+/).reverse(),
+                word,
+                line = [],
+                lineNumber = 0,
+                lineHeight = 1.1, // ems
+                x = text.attr("x"),
+                y = text.attr("y"),
+                dy = 0, // slight adjustment might be needed
+                tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+
+            while (word = words.pop()) {
+                line.push(word);
+                tspan.text(line.join(" "));
+                if (tspan.node().getComputedTextLength() > width) {
+                    line.pop();
+                    tspan.text(line.join(" "));
+                    line = [word];
+                    tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", `${++lineNumber * lineHeight + dy}em`).text(word);
+                }
+            }
+        });
     }
 
     // DRAW CHART ======================================================================================================
@@ -703,7 +737,7 @@
         }
 
         // Add Legend
-        drawLegend(svg, width, height);
+        drawLegend(svg, width, height, svgWidth);
 
         // Adjust text size
         adjustTextSize(scaleFactor);
@@ -739,6 +773,7 @@
                         .on("end", () => {
                             selection.classed("freedom-day", true); // Apply the class after transition
                             // Add event listeners after transition
+                            selection
                             selection
                                 .on("mouseover", function (event) {
                                     tooltip.transition()
