@@ -13,11 +13,16 @@
 
 <div>
     <h2 style="margin-bottom: 0;">Title</h2>
-    <p style="margin-top: 5px;">Number of counties by Cost of Rent Day, weekly and regional breakdown</p>
+    <p style="margin-top: 5px;">Number of counties by Cost of Rent Day by week and region</p>
 </div>
 
 <!-- Container for the calendar chart -->
-<div id="calendarchart"></div>
+<div id="histogramchart"></div>
+
+<div>
+    <p style="margin-top: 5px;">Data Source: Annual Pay - Gross & Private Rental Market Statistics, Office of National Statistics UK | Chart: Sarah C Gall</p>
+    <p style="margin-top: 0;">* Cost of Rent Day is calculated as the proportion of median income multiplied by 365.25 days</p>
+</div>
 
 <!-- d3.js chart -->
 <script type="module">
@@ -26,7 +31,7 @@
     import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
     // Store the reference to the div element
-    const chartDiv = document.getElementById('calendarchart');
+    const chartDiv = document.getElementById('histogramchart');
 
     // Declaring variables
     const calendarYear = 2024;
