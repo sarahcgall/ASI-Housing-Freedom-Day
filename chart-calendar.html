@@ -396,29 +396,6 @@
         return svg;
     }
 
-    // Function to adjust text size based on SVG width
-    function adjustTextSize(scaleFactor) {
-        // Determine wrapping width based on screen size
-        const spacing = window.innerWidth > 350 ? 160 : 110
-
-        // Legend text
-        d3.selectAll(".legendEntry text")
-            .style("font-size", `${14 * scaleFactor}px`);
-
-        // adjust legend position
-        d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
-
-        // adjust legend title
-        d3.selectAll(".legendTitle")
-            .attr("x", spacing * scaleFactor)
-            .style("font-size", `${14 * scaleFactor}px`);
-
-        // Tick Text
-        d3.selectAll(".tick text")
-            .style("font-size", `${13 * scaleFactor}px`)
-    }
-
     // SCALE & AXES FUNCTIONS ==========================================================================================
     // Function to set up the scales
     function setupScales(width, height) {
@@ -440,7 +417,7 @@
         return {xScale, yScale};
     }
 
-    function drawAxes(svg, xScale, yScale, svgWidth) {
+    function drawAxes(svg, xScale, yScale, svgWidth, scaleFactor) {
         // Determine number of ticks based on the width
         const maxTicks = svgWidth > 650 ? 31 : svgWidth > 350 ? 10 : 5;
 
@@ -469,6 +446,10 @@
             .attr("transform", `translate(0, 0)`)
             .call(yAxis)
             .select(".domain").remove();
+
+        // Dynamically adjust Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${13 * scaleFactor}px`)
     }
 
     // BASE DATA FUNCTIONS =============================================================================================
@@ -638,32 +619,36 @@
 
     // LEGEND ==========================================================================================================
     // Add Legend
-    function drawLegend(svg, width, height, svgWidth, aspectRatio) {
+    function drawLegend(svg, width, height, aspectRatio, scaleFactor) {
         // Defend legend data
         const legendData = [
             {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 0.7},
             {color: '#4C72BE', text: 'Cost of Rent Day', opacity: 0.7}
         ];
 
+        // Calculate legend positioning and wrapping width dynamically
+        const legendX = 10; // Margin from the left
+        const legendY = height + (18.75 * aspectRatio); // Margin from the top based on aspect ratio
+        const wrapWidth = window.innerWidth > 350 ? 100 : 80; // Conditional wrapping width based on available width
+        const spacing = window.innerWidth > 350 ? 160 : 110; // Determine space between horizontal legend items
+
         // Create a legend group
         const legend = svg.append("g")
-            .attr("transform", `translate(10, ${height + (18.75 * aspectRatio)})`);
-
-        // Determine wrapping width based on screen size
-        const wrapWidth = window.innerWidth > 350 ? 100 : 80
+            .attr("transform", `translate(${legendX}, ${legendY})`);
 
         // Add legend entries
         legend.selectAll("legendEntry")
             .data(legendData)
             .enter()
             .append("g")
-            .attr("class", "legendEntry");
+            .attr("class", "legendEntry")
+            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`); // adjust legend position
 
         // Draw legend rectangles
         legend.selectAll(".legendEntry")
             .append("rect")
             .attr("x", 0)
-            .attr("y", 0)
+            .attr("y", 0) // Adjust y position to better align with text
             .attr("width", 15)
             .attr("height", 15)
             .attr("rx", 2)
@@ -675,13 +660,17 @@
         legend.selectAll(".legendEntry")
             .append("text")
             .attr("x", 20)
-            .attr("y", 12)
+            .attr("y", 12 + (aspectRatio * 3))
             .attr("text-anchor", "start")
             .attr("alignment-baseline", "start")
             .text(d => d.text)
             .style("font-size", "12px")
             .style("fill", "#333")
             .call(wrap, wrapWidth);
+
+        // Dynamically adjust size of text
+        d3.selectAll(".legendEntry text")
+            .style("font-size", `${14 * scaleFactor}px`)
     }
 
     // Function to wrap text if it's too long
@@ -726,7 +715,7 @@
         const {xScale, yScale} = setupScales(width, height);
 
         // Draw axes
-        drawAxes(svg, xScale, yScale, svgWidth);
+        drawAxes(svg, xScale, yScale, svgWidth, scaleFactor);
 
         // Generate and draw heatmap
         drawBaseHeatmap(svg, generateHeatmapData(calendarYear), xScale, yScale);
@@ -740,10 +729,7 @@
         }
 
         // Add Legend
-        drawLegend(svg, width, height, svgWidth, aspectRatio);
-
-        // Adjust text size
-        adjustTextSize(scaleFactor);
+        drawLegend(svg, width, height, aspectRatio, scaleFactor);
 
     }
 
