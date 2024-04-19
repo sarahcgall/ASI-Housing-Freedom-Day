@@ -220,6 +220,10 @@
 <!-- Container for the calendar chart -->
 <div id="calendarchart"></div>
 
+<div>
+    <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
+</div>
+
 <!-- Error Message Modal -->
 <div id="errorModal" class="modal" style="display:none;">
     <div class="modal-content">
@@ -345,21 +349,21 @@
             margin = {
                 top: 30,
                 right: 10,
-                bottom: 160,
+                bottom: 115,
                 left: 80
             };
         } else if (svgWidth < 650) {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 80,
+                bottom: 60,
                 left: 50
             };
         } else {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 60,
+                bottom: 50,
                 left: 30
             };
         }
@@ -394,7 +398,6 @@
     function adjustTextSize(scaleFactor) {
         // Determine wrapping width based on screen size
         const spacing = window.innerWidth > 350 ? 160 : 110
-        const smallSpacingFactor = 0.5;
 
         // Legend
         d3.selectAll(".legendEntry text")
