@@ -189,7 +189,7 @@
         <strong style="white-space: pre; color: #4C72BE;"><i>Cost of Rent Day</i></strong> and see how you compare to
         your region or local area.<br>
         <br>
-        Hover over, or click on, the Cost of Rent day for additional information.</p>
+        Hover over, or click on, the Cost of Rent Day for additional information.</p>
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
@@ -364,7 +364,7 @@
 
         // Calculate margins based on svgWidth
         const margin = {
-            top: 30 * aspectRatio,
+            top: 35 * aspectRatio,
             right: 10,
             bottom: 120 * aspectRatio,
             left: 80 * aspectRatio
@@ -375,7 +375,7 @@
         const height = baseHeight - margin.top - margin.bottom;
 
         // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
-        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio};
     }
 
     // Function to set up the
@@ -401,7 +401,7 @@
         // Determine wrapping width based on screen size
         const spacing = window.innerWidth > 350 ? 160 : 110
 
-        // Legend
+        // Legend text
         d3.selectAll(".legendEntry text")
             .style("font-size", `${14 * scaleFactor}px`);
 
@@ -638,7 +638,7 @@
 
     // LEGEND ==========================================================================================================
     // Add Legend
-    function drawLegend(svg, width, height, svgWidth) {
+    function drawLegend(svg, width, height, svgWidth, aspectRatio) {
         // Defend legend data
         const legendData = [
             {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 0.7},
@@ -647,7 +647,7 @@
 
         // Create a legend group
         const legend = svg.append("g")
-            .attr("transform", `translate(10, ${height + 7.5})`);
+            .attr("transform", `translate(10, ${height + (18.75 * aspectRatio)})`);
 
         // Determine wrapping width based on screen size
         const wrapWidth = window.innerWidth > 350 ? 100 : 80
@@ -717,7 +717,7 @@
         const svgWidth = chartDiv.clientWidth;
 
         // Get dimensions parameters from getDimensions function
-        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio} = setDimensions(svgWidth);
 
         // Setup SVG using the setupSVG function
         svg = setupSVG(baseWidth, baseHeight, margin);
@@ -740,7 +740,7 @@
         }
 
         // Add Legend
-        drawLegend(svg, width, height, svgWidth);
+        drawLegend(svg, width, height, svgWidth, aspectRatio);
 
         // Adjust text size
         adjustTextSize(scaleFactor);
