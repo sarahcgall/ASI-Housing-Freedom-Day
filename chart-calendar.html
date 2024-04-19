@@ -131,7 +131,7 @@
         }
 
         .day:hover {
-            opacity: 0.7;
+            opacity: 1;
         }
 
         .modal {
@@ -172,8 +172,8 @@
         }
 
         .freedom-day {
-            fill: #FFC000; /* Navy blue color */
-            stroke: #0a0a0a; /* Consistent stroke color */
+            fill: #4C72BE; /* Navy blue color */
+            stroke: #4C72BE; /* Consistent stroke color */
             stroke-width: 1px; /* Visibility of the border */
             opacity: 1; /* Fully opaque */
         }
@@ -186,7 +186,7 @@
     <h2 style="margin-bottom: 0;">Cost of Rent Day Calculator</h2>
     <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
         your own
-        <strong style="white-space: pre;"><i> Cost of Rent Day </i></strong> and see how you compare to your region or
+        <strong style="white-space: pre; color: #4C72BE;"><i> Cost of Rent Day </i></strong> and see how you compare to your region or
         local
         area.<br>
         <br>
@@ -345,21 +345,21 @@
             margin = {
                 top: 30,
                 right: 10,
-                bottom: 200,
+                bottom: 160,
                 left: 80
             };
         } else if (svgWidth < 650) {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 150,
+                bottom: 80,
                 left: 50
             };
         } else {
             margin = {
                 top: 20,
                 right: 10,
-                bottom: 100,
+                bottom: 60,
                 left: 30
             };
         }
@@ -402,17 +402,7 @@
 
         // adjust legend position
         d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => {
-            let space;
-            if (i === 0) {
-                space = 0;
-            } else if (i === 1) {
-                space = spacing;
-            } else if (i === 2) {
-                space = spacing + spacing * smallSpacingFactor;
-            }
-            return `translate(${space * scaleFactor}, 0)`;
-        });
+            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
 
         // adjust legend title
         d3.selectAll(".legendTitle")
@@ -593,7 +583,7 @@
         svg.selectAll(".day")
             .transition(transition) // Apply the defined transition
             .attr("stroke-width", "0")
-            .attr("opacity", "1")
+            .attr("opacity", "0.7")
             .attr("fill", function (d) {
                 const currentDate = new Date(calendarYear, months.indexOf(d.month), d.day);
                 if (currentDate < freedomDate) {
@@ -646,9 +636,8 @@
     function drawLegend(svg, width, height, svgWidth) {
         // Defend legend data
         const legendData = [
-            {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 1},
-            {color: '#4C72BE', text: 'Region', opacity: 1},
-            {color: '#FFC000', text: 'Your', opacity: 1},
+            {color: '#C00000', text: 'Day spent working solely to pay rent', opacity: 0.7},
+            {color: '#4C72BE', text: 'Cost of Rent Day', opacity: 0.7}
         ];
 
         // Create a legend group
@@ -669,7 +658,7 @@
         legend.selectAll(".legendEntry")
             .append("rect")
             .attr("x", 0)
-            .attr("y", 20)
+            .attr("y", 0)
             .attr("width", 15)
             .attr("height", 15)
             .attr("rx", 2)
@@ -677,21 +666,11 @@
             .style("fill", d => d.color)
             .style("opacity", d => d.opacity);
 
-        // Add "Cost of Rent Day" title before the desired legend entries
-        legend.append("text")
-            .attr("class", "legendTitle")
-            .attr("y", 7) // the title where it fits the best
-            .text('Cost of Rent Day:')
-            .attr("text-anchor", "start")
-            .attr("alignment-baseline", "middle")
-            .style("font-weight","500")
-            .style("fill", "#333");
-
         // Add legend text
         legend.selectAll(".legendEntry")
             .append("text")
             .attr("x", 20)
-            .attr("y", 32)
+            .attr("y", 12)
             .attr("text-anchor", "start")
             .attr("alignment-baseline", "start")
             .text(d => d.text)
@@ -785,8 +764,8 @@
                     selection
                         .transition() // Apply a smooth transition
                         .duration(500)
-                        .attr("fill", "#FFC000") // Change the color for the freedom day
-                        .attr("stroke", "#0a0a0a") // Apply a stroke color
+                        .attr("fill", "#4C72BE") // Change the color for the freedom day
+                        .attr("stroke", "#4C72BE") // Apply a stroke color
                         .attr("stroke-width", "1px") // And a stroke width
                         .attr("opacity", 1) // Make opacity 100%
                         .on("end", () => {
@@ -800,7 +779,7 @@
                                         .style("opacity", 1);
                                     tooltip.html(`
     <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px; background-color: #FFC000; color: #0a0a0a;">
+        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #4C72BE;">
              Your Cost of Rent Day is:
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
