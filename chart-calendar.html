@@ -186,11 +186,10 @@
     <h2 style="margin-bottom: 0;">Cost of Rent Day Calculator</h2>
     <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
         your own
-        <strong style="white-space: pre; color: #4C72BE;"><i> Cost of Rent Day </i></strong> and see how you compare to your region or
-        local
-        area.<br>
+        <strong style="white-space: pre; color: #4C72BE;"><i>Cost of Rent Day</i></strong> and see how you compare to
+        your region or local area.<br>
         <br>
-        Hover over the Cost of Rent day for additional information.</p>
+        Hover over, or click on, the Cost of Rent day for additional information.</p>
 </div>
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
@@ -329,13 +328,33 @@
     }
 
     // SETUP FUNCTIONS =================================================================================================
+    // Function to calculate the aspect ratio based on linear interpolation
+    function calculateAspectRatio(svgWidth) {
+        // Define the minimum and maximum widths and their corresponding aspect ratios
+        const minWidth = 220;  // Width for aspectRatio = 1
+        const maxWidth = 650;  // Width for aspectRatio = 0.4
+        const minAspectRatio = 1;
+        const maxAspectRatio = 0.4;
+
+        if (svgWidth <= minWidth) {
+            return minAspectRatio;
+        } else if (svgWidth >= maxWidth) {
+            return maxAspectRatio;
+        } else {
+            // Calculate the slope of the line (change in aspect ratio over change in width)
+            const slope = (maxAspectRatio - minAspectRatio) / (maxWidth - minWidth);
+            // Use the line equation to calculate the aspect ratio for the current width
+            return minAspectRatio + slope * (svgWidth - minWidth);
+        }
+    }
+
     // Function to adjust margin
     function setDimensions(svgWidth) {
         // Set base width of chart area
         const baseWidth = 640;
 
         // Set base height dependent on screen size
-        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
+        const aspectRatio = calculateAspectRatio(svgWidth);
 
         // Calculate base height based on aspect ratio
         const baseHeight = baseWidth * aspectRatio;
@@ -344,29 +363,12 @@
         const scaleFactor = baseWidth / svgWidth;
 
         // Calculate margins based on svgWidth
-        let margin
-        if (svgWidth < 350) {
-            margin = {
-                top: 30,
-                right: 10,
-                bottom: 115,
-                left: 80
-            };
-        } else if (svgWidth < 650) {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 60,
-                left: 50
-            };
-        } else {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 50,
-                left: 30
-            };
-        }
+        const margin = {
+            top: 30 * aspectRatio,
+            right: 10,
+            bottom: 120 * aspectRatio,
+            left: 80 * aspectRatio
+        };
 
         // Calculate width and height using the margins
         const width = baseWidth - margin.left - margin.right;
