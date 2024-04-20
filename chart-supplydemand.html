@@ -22,13 +22,21 @@
 
 <body>
 
+<!-- Container for heading and subheading -->
 <div>
-    <h3 style="margin-bottom: 0;">Renters in the north of England will reach their Cost of Rent Day earlier than those in the south</h3>
-    <p style="margin-top: 5px;">Average number of days until Cost of Rent Day, by county</p>
+    <h3 style="margin-bottom: 0;">Since the 70s, England has seen a decreasing housing supply while the total population
+        has progressively increased</h3>
+    <p style="margin-top: 5px;">Total number of permanent dwellings built vs population estimates over time,
+        1971-2022</p>
 </div>
 
-<!-- Container for the calendar chart -->
-<div id="calendarchart"></div>
+<!-- Container for the timeseries chart -->
+<div id="supplydemandchart"></div>
+
+<!-- Container for the caption -->
+<div>
+    <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
+</div>
 
 <!-- d3.js chart -->
 <script type="module">
@@ -37,38 +45,28 @@
     import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
     // Store the reference to the div element
-    const chartDiv = document.getElementById('calendarchart');
+    const chartDiv = document.getElementById('supplydemandchart');
 
     // Declaring variables
-    const calendarYear = 2024;
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
-    const csvFile = 'Regional Data.csv'; // Path to your CSV file
-    let regionData = []; // Initialise regionData
+    const csvFile = 'Timeseries Data.csv'; // Path to your CSV file
+    let timeseriesData = []; // Initialise timeseriesData
     let svg, x, y; // Define svg, x, and y
-    let lastRegion = 'England' // store most recent region (on load = England)
-    let lastFreedomDay = null; // store most recent freedomDay
 
     // DATASET =========================================================================================================
     // Asynchronous function to fetch and process data
     async function fetchData() {
         try {
             const rawData = await d3.csv(csvFile);
-            // Filter Counties only and remove NAs/missing values from Day of the year
-            const filteredData = rawData.filter(function (d) {
-                return d.Category === "County" && d["Day of the year"];
-            });
-            const parsedData = filteredData.map(d => {
-                // Parse the date once, use for both
-                const date = d3.timeParse("%m/%d/%Y")(d["Day of the year"]);
+            const parsedData = rawData.map(d => {
                 return [
                     {
-                        region: d.ParentRegion,
-                        countyName: d.Name,
-                        freedomDate: date,
-                        proportion: +d["Rent as a share of income"]
+                        region: d.Region,
+                        income: +d.Income_Perc,
+                        rent: +d.Rent_Perc,
+                        days: +d.Day_Delta
                     },
                 ];
-            }).flat(); // Flatten the array of arrays into a single array
+            }).flat();
             console.log(parsedData)
             return parsedData;
         } catch (error) {
@@ -78,13 +76,33 @@
     }
 
     // SETUP FUNCTIONS =================================================================================================
+    // Function to calculate the aspect ratio based on linear interpolation
+    function calculateAspectRatio(svgWidth) {
+        // Define the minimum and maximum widths and their corresponding aspect ratios
+        const minWidth = 220;  // Width for aspectRatio = 1
+        const maxWidth = 650;  // Width for aspectRatio = 0.4
+        const minAspectRatio = 1.5;
+        const maxAspectRatio = 0.8;
+
+        if (svgWidth <= minWidth) {
+            return minAspectRatio;
+        } else if (svgWidth >= maxWidth) {
+            return maxAspectRatio;
+        } else {
+            // Calculate the slope of the line (change in aspect ratio over change in width)
+            const slope = (maxAspectRatio - minAspectRatio) / (maxWidth - minWidth);
+            // Use the line equation to calculate the aspect ratio for the current width
+            return minAspectRatio + slope * (svgWidth - minWidth);
+        }
+    }
+
     // Function to adjust margin
     function setDimensions(svgWidth) {
         // Set base width of chart area
         const baseWidth = 640;
 
         // Set base height dependent on screen size
-        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
+        const aspectRatio = calculateAspectRatio(svgWidth);
 
         // Calculate base height based on aspect ratio
         const baseHeight = baseWidth * aspectRatio;
@@ -93,29 +111,12 @@
         const scaleFactor = baseWidth / svgWidth;
 
         // Calculate margins based on svgWidth
-        let margin
-        if (svgWidth < 350) {
-            margin = {
-                top: 30,
-                right: 10,
-                bottom: 160,
-                left: 80
-            };
-        } else if (svgWidth < 650) {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 80,
-                left: 50
-            };
-        } else {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 60,
-                left: 30
-            };
-        }
+        const margin = {
+            top: 10,
+            right: 10,
+            bottom: 80 * aspectRatio,
+            left: 80 * aspectRatio
+        };
 
         // Calculate width and height using the margins
         const width = baseWidth - margin.left - margin.right;
@@ -143,97 +144,66 @@
         return svg;
     }
 
-    // Function to adjust text size based on SVG width
-    function adjustTextSize(scaleFactor) {
-        // Determine wrapping width based on screen size
-        const spacing = window.innerWidth > 350 ? 160 : 110
-
-        // Legend
-        d3.selectAll(".legendEntry text")
-            .style("font-size", `${14 * scaleFactor}px`);
-
-        // adjust legend position
-        d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
-
-        // Tick Text
-        d3.selectAll(".tick text")
-            .style("font-size", `${13 * scaleFactor}px`)
-    }
-
     // SCALE & AXES FUNCTIONS ==========================================================================================
     // Function to set up the scales
     function setupScales(width, height) {
-        // Days array for the X-axis (array [1, 2, ..., 31])
-        const days = Array.from({length: 31}, (_, i) => i + 1);
-
         // Create an ordinal scale for Y-axis (months)
         const yScale = d3.scaleBand()
-            .domain(months)
-            .range([0, height])
-            .padding(0.05); // Adjust padding to control space between bands
+            .domain(timeseriesData.map(function (d) {
+                return d.region;
+            }))
+            .range([0, height]) // Adjust padding to control space between bands
+            .padding(1);
 
         // Create an ordinal scale for X-axis (days)
-        const xScale = d3.scaleBand()
-            .domain(days)
-            .range([0, width])
-            .padding(0.05); // Adjust padding to control space between bands
+        const xScale = d3.scaleLinear()
+            .domain([0.05, 0.31])
+            .range([0, width]); // Adjust padding to control space between bands
 
         return {xScale, yScale};
     }
 
-    function drawAxes(svg, xScale, yScale, svgWidth) {
+    function drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor) {
         // Determine number of ticks based on the width
-        const maxTicks = svgWidth > 650 ? 31 : svgWidth > 350 ? 10 : 5;
+        const maxTicks = svgWidth > 650 ? 3 : svgWidth > 350 ? 2 : 1;
 
         // Calculate the tick values based on the maximum number of ticks
         let tickValues = xScale.domain().filter(function (d, i) {
-            return !(i % Math.ceil(31 / maxTicks));
+            return !(i % Math.ceil(3 / maxTicks));
         });
 
-        // Add X-axis at the top
-        const xAxis = d3.axisTop(xScale)
-            .tickValues(tickValues)  // Set custom tick values
-            .tickSize(0); // Hide tick marks
-
-        svg.append("g")
+        // Add X-axis at the bottom
+        const xAxis = svg.append("g")
             .attr("class", "x-axis")
-            .attr("transform", `translate(0, 0)`)
-            .call(xAxis)
-            .select(".domain").remove();
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(xScale)
+                .ticks(maxTicks)
+                .tickSize(0)
+                .tickFormat(d3.format('.0%')));
+
+        // Add X-axis title at the top
+        xAxis.append("text")
+            .attr("class", "x-axis-title")
+            .attr("x", width / 2) // Center the label
+            .attr("y", 40 * scaleFactor)
+            .style("fill", "black")
+            .style("font-size", `${14 * scaleFactor}px`)
+            .style("text-anchor", "middle") // Center the text at the x-position
+            .text("% Change");
 
         // Add Y-axis
-        const yAxis = d3.axisLeft(yScale)
-            .tickSize(0); // Hide tick marks
-
-        svg.append("g")
+        const yAxis = svg.append("g")
             .attr("class", "y-axis")
-            .attr("transform", `translate(0, 0)`)
-            .call(yAxis)
-            .select(".domain").remove();
-    }
+            .attr("transform", "translate(0,0)")
+            .call(d3.axisLeft(yScale)
+                .tickSize(0));
 
-    // BASE DATA FUNCTIONS =============================================================================================
-    // Function to determine the number of days in each month
-    function getDaysInMonth(month, year) {
-        return new Date(year, month, 0).getDate();
-    }
+        // Remove axis line
+        yAxis.select(".domain").remove();
 
-    // Function to generate heat map
-    function generateHeatmapData(year) {
-        const heatmapData = [];
-
-        months.forEach((month, i) => {
-            const numDays = getDaysInMonth(i + 1, year);
-            for (let day = 1; day <= numDays; day++) {
-                heatmapData.push({
-                    day: day,
-                    month: month
-                });
-            }
-        });
-
-        return heatmapData;
+        // Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${13 * scaleFactor}px`)
     }
 
     // TOOLTIP =========================================================================================================
@@ -296,11 +266,6 @@
     // PLOTTING FUNCTIONS ==============================================================================================
 
 
-
-    // LEGEND ==========================================================================================================
-    // Add Legend
-
-
     // DRAW CHART ======================================================================================================
     function drawChart() {
         // Use the viewport width to determine width of svg container
@@ -316,10 +281,8 @@
         const {xScale, yScale} = setupScales(width, height);
 
         // Draw axes
-        drawAxes(svg, xScale, yScale, svgWidth);
+        // drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor);
 
-        // Adjust text size
-        adjustTextSize(scaleFactor);
 
     }
 
@@ -329,8 +292,8 @@
 
     // Function to initialise and load data (only once)
     async function initialiseChart() {
-        regionData = await fetchData(); // Load and parse the data
-        if (Object.keys(regionData).length === 0) {
+        timeseriesData = await fetchData(); // Load and parse the data
+        if (Object.keys(timeseriesData).length === 0) {
             console.error("No data available to draw the chart.");
             return; // Exit if data is not available
         }
@@ -339,7 +302,7 @@
 
     // Function to draw the chart and handle responsiveness
     function responsiveChart() {
-        if (Object.keys(regionData).length === 0) {
+        if (Object.keys(timeseriesData).length === 0) {
             console.error("Data not ready when responsiveChart called.");
             return;
         }

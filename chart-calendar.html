@@ -5,7 +5,7 @@
     <meta name="robots" content="noindex,nofollow">
     <title>Cost of Rent Calculator</title>
 
-    <!-- Load jQuery first  -->
+    <!-- Load jQuery  -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 
     <!-- Load Select2 CSS  -->
@@ -17,9 +17,20 @@
     <!-- Load Pym.js  -->
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
     <style>
+        body {
+            font-family: proxima nova, Helvetica neue, Helvetica, arial, sans-serif;
+        }
+
+        p {
+            font-size: 14px;
+            line-height: 18px;
+        }
+
         #input-container {
             margin-top: 20px;
             margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 18px;
             display: flex;
             flex-wrap: wrap;
             align-items: stretch;
@@ -182,6 +193,7 @@
 
 <body>
 
+<!-- Container for heading and subheading -->
 <div>
     <h3 style="margin-bottom: 0;">How do you compare? Calculate your Cost of Rent Day</h3>
     <p style="margin-top: 5px;">Enter your gross annual income (before tax) and monthly rental costs below to calculate
@@ -191,6 +203,7 @@
         <br>
         Hover over, or click on, the Cost of Rent Day for additional information.</p>
 </div>
+
 <!-- Container for the Income and Rental inputs -->
 <div id="input-container">
     <div class="input-group" style="margin-bottom: 20px;">
@@ -219,6 +232,7 @@
 <!-- Container for the calendar chart -->
 <div id="calendarchart"></div>
 
+<!-- Container for the caption -->
 <div>
     <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
 </div>
@@ -259,7 +273,7 @@
     // Declaring variables
     const calendarYear = 2024;
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
-    const csvFile = 'Regional Data.csv'; // Path to your CSV file
+    const csvFile = 'Regional Data.csv'; // Path to CSV file
     let regionData = {}; // Initialise regionData
     let svg, x, y; // Define svg, x, and y
     let lastRegion = 'England' // store most recent region (on load = England)
@@ -590,8 +604,8 @@
                                 .style("opacity", 1);
                             tooltip.html(`
                     <p style="margin-bottom: 15px;">
-                    <span style="font-weight: bold; font-size: 13px;">${region}'s</span><br><br>
-                        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 14px; margin-bottom: 5px">
+                    <span style="font-weight: bold; font-size: 13px; line-height: 13px;">${region}'s</span><br><br>
+                        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 13px; margin-bottom: 5px">
                             Cost of Rent Day is:
                         </span><br>
                         <strong style="font-size: 16px; margin-top: 5px;">${freedomDate.toLocaleDateString('en-GB', {
@@ -600,7 +614,7 @@
                                 year: 'numeric'
                             })}</strong>
                     </p>
-                    <p style="text-align: start; margin-top: 5px; margin-bottom: 0;">
+                    <p style="text-align: start; margin-top: 5px; margin-bottom: 0; font-size: 12px; line-height: 16px;">
         This was based on:
         <ul style="margin-top: 2.5px; padding-left: 20px; text-align: start;">
             <li><strong>&#163;${formatter.format(income)}</strong> annual income</li>
@@ -770,7 +784,7 @@
                                         .style("opacity", 1);
                                     tooltip.html(`
     <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #4C72BE;">
+        <span style="font-style: italic; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #4C72BE;">
              Your Cost of Rent Day is:
         </span><br>
         <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
@@ -779,7 +793,7 @@
                                         year: 'numeric'
                                     })}</strong>
     </p>
-    <p>
+    <p style="font-size: 12px; line-height: 16px;">
     This means that in 2024, you worked <strong>${freedomDay.toFixed(0) - 1} days</strong> to pay for your rental bill.
     </p>
 `)

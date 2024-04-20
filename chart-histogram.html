@@ -9,41 +9,62 @@
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
 
     <style>
+        body {
+            font-family: proxima nova, Helvetica neue, Helvetica, arial, sans-serif;
+        }
+
+        p {
+            font-size: 14px;
+            line-height: 18px;
+        }
+
         #input-container {
+            font-size: 14px;
+            line-height: 18px;
             margin-top: 20px;
             margin-bottom: 20px;
             display: flex;
-            width: 100%;
+            flex-wrap: wrap;
             align-items: stretch;
         }
 
         .input-group {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
-            width: 100%;
+            justify-content: space-between;
         }
 
         .region {
-            position: relative;
             display: flex;
-            flex: 1;
+            flex: 1 0 auto;
             align-items: center; /* Align items vertically in the center */
-            max-width: 317px; /* Minimum width */
             margin-right: 10px; /* Consistent spacing */
         }
 
         #region label {
             font-weight: 500;
             margin-bottom: 2.5px;
-            min-width: 180px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            margin-right: 10px;
         }
 
         .region select {
-            padding: 2px 3px; /* Match padding of input fields */
-            border: 1px solid #989898;
+            padding: 0 20px 0 4px; /* Match padding of input fields */
+            border: 1px solid #ccc;
             border-radius: 2px;
+            box-sizing: border-box;
+            height: 28px;
             background-color: white;
-            width: 100%;
+            color: #444;
+            line-height: 28px;
+            min-width: 269px;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            display: block;
+            margin-left: 10px;
         }
 
         /* Adjustments for small screens, below 410px */
@@ -63,9 +84,10 @@
 
 <body>
 
+<!-- Container for heading and subheading -->
 <div>
-    <h3 style="margin-bottom: 0;">While England marks its Cost of Rent Day, most counties are still working solely to pay their annual rental bill</h3>
-    <p style="margin-top: 5px;">Number of counties' reaching their Cost of Rent Day by week</p>
+    <h3 style="margin-bottom: 0;">While England marks its Cost of Rent Day, most local areas are still working solely to pay their annual rental bill</h3>
+    <p style="margin-top: 5px;">Number of local areas reaching their Cost of Rent Day by week</p>
 </div>
 
 <!-- Container for the Income and Rental inputs -->
@@ -80,9 +102,10 @@
     </div>
 </div>
 
-<!-- Container for the calendar chart -->
+<!-- Container for the histogram chart -->
 <div id="histogramchart"></div>
 
+<!-- Container for the caption -->
 <div>
     <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
 </div>
@@ -98,7 +121,7 @@
 
     // Declaring global variables
     const calendarYear = 2024;
-    const csvFile = 'Regional Data.csv'; // Path to your CSV file
+    const csvFile = 'Regional Data.csv'; // Path to CSV file
     let regionData = []; // Initialise regionData
     let svg, x, y; // Define svg, x, and y
     let lastRegion = "all"; // store most recent region
@@ -327,7 +350,7 @@
         yAxis.append("text")
             .attr("transform", "translate(10,-10)")
             .style("text-anchor", "end")  // Align text to the end side
-            .text("Number of counties")
+            .text("Number of local areas")
             .style("fill", "black");
 
         // Y-Axis Title
@@ -398,6 +421,7 @@
                     .attr("y", yOffset)
                     .attr("width", xScale(bins[0].x1) - xScale(bins[0].x0) - 1)
                     .attr("height", squareSize)
+                    .attr("fill", "#4C72BE")
                     .attr("stroke", "#fff");
 
                 yOffset += squareSize + padding;  // Move yOffset for the next square
@@ -418,12 +442,8 @@
 
         d3.selectAll(".bar rect")
             .transition(transition)
-            .attr("fill", function (d) {
-                // Revert to default color when "all" is selected or apply highlight color
-                return selectedRegion === "all" ? "#4C72BE" : (d.region === selectedRegion ? "#00B050" : "#4C72BE");
-            })
             .attr("opacity", selectedRegion === "all" ? "1" : function (d) {
-                return d.region === selectedRegion ? "1" : "0.7";
+                return d.region === selectedRegion ? "1" : "0.25";
             });
 
         // Update lastRegion
