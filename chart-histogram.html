@@ -7,21 +7,84 @@
 
     <!-- Load Pym.js  -->
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
+
+    <style>
+        #input-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .region {
+            position: relative;
+            display: flex;
+            flex: 1;
+            align-items: center; /* Align items vertically in the center */
+            max-width: 317px; /* Minimum width */
+            margin-right: 10px; /* Consistent spacing */
+        }
+
+        #region label {
+            font-weight: 500;
+            margin-bottom: 2.5px;
+            min-width: 180px;
+        }
+
+        .region select {
+            padding: 2px 3px; /* Match padding of input fields */
+            border: 1px solid #989898;
+            border-radius: 2px;
+            background-color: white;
+            width: 100%;
+        }
+
+        /* Adjustments for small screens, below 410px */
+        @media (max-width: 410px) {
+            .region {
+                position: relative;
+                display: flex;
+                flex-direction: column; /* Stack label and input vertically */
+                align-items: flex-start;
+                flex: 1; /* Each field takes equal space */
+                min-width: 180px; /* Prevents fields from becoming too narrow */
+                margin-right: 20px;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
 <div>
-    <h2 style="margin-bottom: 0;">Title</h2>
-    <p style="margin-top: 5px;">Number of counties by Cost of Rent Day by week and region</p>
+    <h3 style="margin-bottom: 0;">While England marks its Cost of Rent Day, most counties are still working solely to pay their annual rental bill</h3>
+    <p style="margin-top: 5px;">Number of counties' reaching their Cost of Rent Day by week</p>
+</div>
+
+<!-- Container for the Income and Rental inputs -->
+<div id="input-container">
+    <div class="input-group" style="margin-bottom: 20px;">
+        <div class="region">
+            <label for="region-dropdown">Highlight Region:</label>
+            <select id="region-dropdown" class="region-dropdown">
+                <option value="all">No Highlight</option>
+            </select>
+        </div>
+    </div>
 </div>
 
 <!-- Container for the calendar chart -->
 <div id="histogramchart"></div>
 
 <div>
-    <p style="margin-top: 5px;">Data Source: Annual Pay - Gross & Private Rental Market Statistics, Office of National Statistics UK | Chart: Sarah C Gall</p>
-    <p style="margin-top: 0;">* Cost of Rent Day is calculated as the proportion of median income multiplied by 365.25 days</p>
+    <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
 </div>
 
 <!-- d3.js chart -->
@@ -33,14 +96,12 @@
     // Store the reference to the div element
     const chartDiv = document.getElementById('histogramchart');
 
-    // Declaring variables
+    // Declaring global variables
     const calendarYear = 2024;
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
     const csvFile = 'Regional Data.csv'; // Path to your CSV file
     let regionData = []; // Initialise regionData
     let svg, x, y; // Define svg, x, and y
-    let lastRegion = 'England' // store most recent region (on load = England)
-    let lastFreedomDay = null; // store most recent freedomDay
+    let lastRegion = "all"; // store most recent region
 
     // DATASET =========================================================================================================
     // Asynchronous function to fetch and process data
@@ -62,22 +123,58 @@
                         proportion: +d["Rent as a share of income"]
                     },
                 ];
-            }).flat(); // Flatten the array of arrays into a single array
+            }).flat();
+
+            updateDropdown(parsedData); // Update the dropdown before returning the data
+
             return parsedData;
+
         } catch (error) {
             console.error("Error loading data:", error);
             return [];
         }
     }
 
+    // Function to populate dropdown menu with regions
+    function updateDropdown(data) {
+        const regions = [...new Set(data.map(d => d.region))];  // Extract unique regions
+
+        const select = d3.select("#region-dropdown");
+        regions.forEach(region => {
+            select.append("option")
+                .attr("value", region)
+                .text(region);
+        });
+    }
+
     // SETUP FUNCTIONS =================================================================================================
+    // Function to calculate the aspect ratio based on linear interpolation
+    function calculateAspectRatio(svgWidth) {
+        // Define the minimum and maximum widths and their corresponding aspect ratios
+        const minWidth = 220;  // Width for aspectRatio = 1
+        const maxWidth = 650;  // Width for aspectRatio = 0.4
+        const minAspectRatio = 1.5;
+        const maxAspectRatio = 0.8;
+
+        if (svgWidth <= minWidth) {
+            return minAspectRatio;
+        } else if (svgWidth >= maxWidth) {
+            return maxAspectRatio;
+        } else {
+            // Calculate the slope of the line (change in aspect ratio over change in width)
+            const slope = (maxAspectRatio - minAspectRatio) / (maxWidth - minWidth);
+            // Use the line equation to calculate the aspect ratio for the current width
+            return minAspectRatio + slope * (svgWidth - minWidth);
+        }
+    }
+
     // Function to adjust margin
     function setDimensions(svgWidth) {
         // Set base width of chart area
         const baseWidth = 640;
 
         // Set base height dependent on screen size
-        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
+        const aspectRatio = calculateAspectRatio(svgWidth);
 
         // Calculate base height based on aspect ratio
         const baseHeight = baseWidth * aspectRatio;
@@ -86,36 +183,19 @@
         const scaleFactor = baseWidth / svgWidth;
 
         // Calculate margins based on svgWidth
-        let margin
-        if (svgWidth < 350) {
-            margin = {
-                top: 30,
-                right: 80,
-                bottom: 160,
-                left: 10
-            };
-        } else if (svgWidth < 650) {
-            margin = {
-                top: 20,
-                right: 50,
-                bottom: 80,
-                left: 10
-            };
-        } else {
-            margin = {
-                top: 20,
-                right: 30,
-                bottom: 60,
-                left: 10
-            };
-        }
+        const margin = {
+            top: 40 * aspectRatio,
+            right: 80 * aspectRatio,
+            bottom: 80 * aspectRatio,
+            left: 10
+        };
 
         // Calculate width and height using the margins
         const width = baseWidth - margin.left - margin.right;
         const height = baseHeight - margin.top - margin.bottom;
 
         // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
-        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio};
     }
 
     // Function to set up the
@@ -136,39 +216,32 @@
         return svg;
     }
 
-    // Function to adjust text size based on SVG width
-    function adjustTextSize(scaleFactor) {
-        // Determine wrapping width based on screen size
-        const spacing = window.innerWidth > 350 ? 160 : 110
+    // SCALE & AXES FUNCTIONS ==========================================================================================
+    // Function to creat weekly bins
+    function createWeeklyBins(data, xScale) {
+        // Helper function to generate an array of dates, one per week
+        function weekRange(startDate, endDate) {
+            let currentDate = new Date(startDate.getTime());
+            let weeks = [];
+            while (currentDate < endDate) {
+                weeks.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 7);
+            }
+            return weeks;
+        }
 
-        // Y-Axis Title
-        d3.selectAll(".y-axis text")
-            .style("font-size", `${14 * scaleFactor}px`);
+        const firstDayOfYear = xScale.domain()[0];
+        const lastDayOfYear = new Date(firstDayOfYear.getFullYear(), 11, 31);
+        const weeks = weekRange(firstDayOfYear, lastDayOfYear);
 
-        // X-Axis Title
-        d3.selectAll(".x-axis-title")
-            .style("font-size", `${14 * scaleFactor}px`)
-            .attr("y", 40 * scaleFactor); // Adjust the position to be slightly below the x-axis
+        const histogram = d3.histogram()
+            .value(d => d.freedomDate)
+            .domain(xScale.domain())
+            .thresholds(weeks); // Set thresholds to weekly
 
-        // X-Axis Title
-        d3.selectAll(".x-axis-title2")
-            .style("font-size", `${13 * scaleFactor}px`)
-            .attr("y", 60 * scaleFactor); // Adjust the position to be slightly below the x-axis
-
-        // Legend
-        d3.selectAll(".legendEntry text")
-            .style("font-size", `${14 * scaleFactor}px`);
-
-        // adjust legend position
-        d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
-
-        // Tick Text
-        d3.selectAll(".tick text")
-            .style("font-size", `${13 * scaleFactor}px`)
+        return histogram(data);
     }
 
-    // SCALE & AXES FUNCTIONS ==========================================================================================
     // Function to set up the scales
     function setupScales(width, height) {
         // Create a time scale for X-axis (months)
@@ -176,11 +249,16 @@
             .domain([new Date(calendarYear, 0, 1), new Date(calendarYear, 11, 31)])
             .range([0, width]);
 
+        // Get weekly bins directly from the createWeeklyBins function
+        const bins = createWeeklyBins(regionData, xScale);
+        const maxItems = d3.max(bins, d => d.length) + 7.5;
+
         // Create a linear scale for Y-axis (count data) // Create an ordinal scale for Y-axis (days)
         const yScale = d3.scaleLinear()
+            .domain([0, maxItems]) // Calculate max height needed for the tallest stack
             .range([height, 0]);
 
-        return {xScale, yScale};
+        return {xScale, yScale, bins, maxItems};
     }
 
     // Function to determine the middle of the month to place labels
@@ -192,7 +270,7 @@
     }
 
     // Function to draw axes
-    function drawAxes(svg, xScale, yScale, svgWidth, height, width) {
+    function drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor) {
         // Calculate middle of each month for ticks
         const monthTicks = d3.range(0, 12, svgWidth > 650 ? 1 : svgWidth > 350 ? 2 : 3)
             .map(month => middleOfMonth(calendarYear, month));
@@ -223,6 +301,16 @@
             .style("text-anchor", "middle")
             .text("(Week of Year)");
 
+        // X-Axis Title
+        d3.selectAll(".x-axis-title")
+            .style("font-size", `${14 * scaleFactor}px`)
+            .attr("y", 40 * scaleFactor); // Adjust the position to be slightly below the x-axis
+
+        // X-Axis Title
+        d3.selectAll(".x-axis-title2")
+            .style("font-size", `${13 * scaleFactor}px`)
+            .attr("y", 60 * scaleFactor); // Adjust the position to be slightly below the x-axis
+
         // Add Y-axis
         const yAxis = svg.append("g")
             .attr("class", "y-axis")
@@ -242,51 +330,50 @@
             .text("Number of counties")
             .style("fill", "black");
 
+        // Y-Axis Title
+        d3.selectAll(".y-axis text")
+            .style("font-size", `${14 * scaleFactor}px`);
+
+        // Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${13 * scaleFactor}px`)
+
     }
 
-    // BASE DATA FUNCTIONS =============================================================================================
-    function createWeeklyBins(data, xScale) {
-        // Helper function to generate an array of dates, one per week
-        function weekRange(startDate, endDate) {
-            let currentDate = new Date(startDate.getTime());
-            let weeks = [];
-            while (currentDate < endDate) {
-                weeks.push(new Date(currentDate));
-                currentDate.setDate(currentDate.getDate() + 7);
-            }
-            return weeks;
-        }
+    // ENGLAND LINE ====================================================================================================
+    // Append a vertical line to highlight the 5th of May (England)
+    function drawLine(svg, xScale, yScale, height, scaleFactor) {
+        const may5 = new Date(calendarYear, 4, 6);
 
-        const firstDayOfYear = xScale.domain()[0];
-        const lastDayOfYear = new Date(firstDayOfYear.getFullYear(), 11, 31);
-        const weeks = weekRange(firstDayOfYear, lastDayOfYear);
+        svg.append("line")
+            .attr("class", "hline")
+            .attr("x1", xScale(may5) + 0.5)
+            .attr("x2", xScale(may5) + 0.5)
+            .attr("y1", 0)
+            .attr("y2", height)
+            .attr("stroke", "#333")
+            .attr("stroke-dasharray", "4");
 
-        const histogram = d3.histogram()
-            .value(d => d.freedomDate)
-            .domain(xScale.domain())
-            .thresholds(weeks); // Set thresholds to weekly
+        svg.append("text")
+            .attr("x", xScale(may5) + 10)
+            .attr("y", 10)
+            .text("England")
+            .style("fill", "#333")
+            .style("font-size", `${14 * scaleFactor}px`);
 
-        return histogram(data);
     }
 
-    // PLOTTING FUNCTIONS ==============================================================================================
-    function calculateSquareSize(data, height) {
+    // HISTOGRAM PLOTTING ==============================================================================================
+    function calculateSquareSize(data, height, maxItems, padding) {
         // Calculate the max number of items in any bin
-        const maxItems = d3.max(data, d => d.length);
-        const padding = 0.5; // Minimum padding
         const availableHeightPerItem = height / maxItems - padding;
         return Math.min(20, availableHeightPerItem); // Ensure squares are not larger than 20px
     }
 
-    function drawHistogram(svg, xScale, yScale, height) {
-        // Get weekly bins directly from the createWeeklyBins function
-        const bins = createWeeklyBins(regionData, xScale);
+    function drawHistogram(svg, bins, xScale, yScale, height, maxItems) {
         // Define square size and padding
-        const squareSize = calculateSquareSize(bins, height);
         const padding = 0.5;
-
-        // Calculate max height needed for the tallest stack
-        yScale.domain([0, Object.keys(bins).length]);  // Reset yScale domain based on actual data
+        const squareSize = calculateSquareSize(bins, height, maxItems, padding);
 
         // Create a color scale for regions
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
@@ -306,16 +393,41 @@
 
             binData.forEach((d, index) => {
                 g.append("rect")
+                    .datum(d)
                     .attr("x", 1)
                     .attr("y", yOffset)
                     .attr("width", xScale(bins[0].x1) - xScale(bins[0].x0) - 1)
                     .attr("height", squareSize)
-                    .attr("fill", colorScale(d.region))
                     .attr("stroke", "#fff");
 
                 yOffset += squareSize + padding;  // Move yOffset for the next square
             });
         });
+    }
+
+    // HIGHLIGHTING THE REGION =========================================================================================
+    // On Update
+    d3.select("#region-dropdown").on("change", function (event) {
+        // Using D3 to get the selected value directly from the event
+        const selectedRegion = d3.select(this).property("value");
+        updateHighlight(selectedRegion);
+    });
+
+    function updateHighlight(selectedRegion) {
+        const transition = svg.transition().duration(500); // 500 milliseconds
+
+        d3.selectAll(".bar rect")
+            .transition(transition)
+            .attr("fill", function (d) {
+                // Revert to default color when "all" is selected or apply highlight color
+                return selectedRegion === "all" ? "#4C72BE" : (d.region === selectedRegion ? "#00B050" : "#4C72BE");
+            })
+            .attr("opacity", selectedRegion === "all" ? "1" : function (d) {
+                return d.region === selectedRegion ? "1" : "0.7";
+            });
+
+        // Update lastRegion
+        lastRegion = selectedRegion
     }
 
     // LEGEND ==========================================================================================================
@@ -379,7 +491,6 @@
             .style("opacity", 0);
     }
 
-
     // DRAW CHART ======================================================================================================
     function drawChart() {
         // Use the viewport width to determine width of svg container
@@ -392,16 +503,19 @@
         svg = setupSVG(baseWidth, baseHeight, margin);
 
         // Setup scales
-        const {xScale, yScale} = setupScales(width, height);
+        const {xScale, yScale, bins, maxItems} = setupScales(width, height);
 
         // Draw Histrogram
-        drawHistogram(svg, xScale, yScale, height)
+        drawHistogram(svg, bins, xScale, yScale, height, maxItems)
 
         // Draw axes
-        drawAxes(svg, xScale, yScale, svgWidth, height, width);
+        drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor);
 
-        // Adjust text size
-        adjustTextSize(scaleFactor);
+        // Draw England line
+        drawLine(svg, xScale, yScale, height, scaleFactor)
+
+        // Always redraw the region heatmap to maintain consistent region data display
+        if (lastRegion) updateHighlight(lastRegion);
 
     }
 
