@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>Cost of Rent Histogram</title>
+    <title>Housing Supply vs Demand</title>
 
     <!-- Load Pym.js  -->
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
@@ -48,7 +48,7 @@
     const chartDiv = document.getElementById('supplydemandchart');
 
     // Declaring variables
-    const csvFile = 'Timeseries Data.csv'; // Path to your CSV file
+    const csvFile = 'Supply Demand Data.csv'; // Path to CSV file
     let timeseriesData = []; // Initialise timeseriesData
     let svg, x, y; // Define svg, x, and y
 
@@ -57,18 +57,20 @@
     async function fetchData() {
         try {
             const rawData = await d3.csv(csvFile);
+
             const parsedData = rawData.map(d => {
                 return [
                     {
-                        region: d.Region,
-                        income: +d.Income_Perc,
-                        rent: +d.Rent_Perc,
-                        days: +d.Day_Delta
+                        year: d3.timeParse("%Y")(d.Year),
+                        dwellings: +d.Dwellings,
+                        population: +d.Population
                     },
                 ];
+
             }).flat();
-            console.log(parsedData)
+
             return parsedData;
+
         } catch (error) {
             console.error("Error loading data:", error);
             return [];
@@ -112,8 +114,8 @@
 
         // Calculate margins based on svgWidth
         const margin = {
-            top: 10,
-            right: 10,
+            top: 20 * aspectRatio,
+            right: 80 * aspectRatio,
             bottom: 80 * aspectRatio,
             left: 80 * aspectRatio
         };
@@ -123,7 +125,7 @@
         const height = baseHeight - margin.top - margin.bottom;
 
         // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
-        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio};
     }
 
     // Function to set up the
@@ -147,63 +149,243 @@
     // SCALE & AXES FUNCTIONS ==========================================================================================
     // Function to set up the scales
     function setupScales(width, height) {
-        // Create an ordinal scale for Y-axis (months)
-        const yScale = d3.scaleBand()
-            .domain(timeseriesData.map(function (d) {
-                return d.region;
-            }))
-            .range([0, height]) // Adjust padding to control space between bands
-            .padding(1);
-
-        // Create an ordinal scale for X-axis (days)
-        const xScale = d3.scaleLinear()
-            .domain([0.05, 0.31])
+        // Create a time scale for X-axis (years)
+        const xScale = d3.scaleTime()
+            .domain([d3.min(timeseriesData, function (d) {
+                return +d.year;
+            }), d3.max(timeseriesData, function (d) {
+                return +d.year;
+            })])
             .range([0, width]); // Adjust padding to control space between bands
 
-        return {xScale, yScale};
+        // Create a linear scale for LHS Y-axis (dwellings)
+        const yScaleLHS = d3.scaleLinear()
+            .domain([0, 350000])
+            .range([height, 0]); // Adjust padding to control space between bands
+
+        // Create a linear scale for RHS Y-axis (population)
+        const yScaleRHS = d3.scaleLinear()
+            .domain([0, 60000000])
+            .range([height, 0]); // Adjust padding to control space between bands
+
+        return {xScale, yScaleLHS, yScaleRHS};
     }
 
-    function drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor) {
+    function formatTick(d) {
+        return d3.format(".2s")(d).replace('G', 'B');  // Use SI notation, replace 'G' for gigabytes with 'B' for billions if needed
+    }
+
+    function formatMillions(d) {
+        return d3.format(".2s")(d).replace('M', 'M'); // Uses SI notation; ensures clarity in suffix used
+    }
+
+    function drawAxes(svg, margin, xScale, yScaleLHS, yScaleRHS, svgWidth, height, width, scaleFactor, aspectRatio) {
         // Determine number of ticks based on the width
-        const maxTicks = svgWidth > 650 ? 3 : svgWidth > 350 ? 2 : 1;
+        const maxTicks = svgWidth > 650 ? 10 : svgWidth > 350 ? 5 : 2;
 
-        // Calculate the tick values based on the maximum number of ticks
-        let tickValues = xScale.domain().filter(function (d, i) {
-            return !(i % Math.ceil(3 / maxTicks));
-        });
-
-        // Add X-axis at the bottom
+        // Add X-Axis at the bottom
         const xAxis = svg.append("g")
             .attr("class", "x-axis")
             .attr("transform", "translate(0," + height + ")")
             .call(d3.axisBottom(xScale)
                 .ticks(maxTicks)
-                .tickSize(0)
-                .tickFormat(d3.format('.0%')));
+                .tickSize(2)
+                .tickSizeOuter(0)) // Remove outer ticks
+            .selectAll(".tick line")
+            .style("stroke", "grey")
+            .style("fill", "grey");
 
-        // Add X-axis title at the top
-        xAxis.append("text")
-            .attr("class", "x-axis-title")
-            .attr("x", width / 2) // Center the label
-            .attr("y", 40 * scaleFactor)
-            .style("fill", "black")
-            .style("font-size", `${14 * scaleFactor}px`)
-            .style("text-anchor", "middle") // Center the text at the x-position
-            .text("% Change");
-
-        // Add Y-axis
-        const yAxis = svg.append("g")
-            .attr("class", "y-axis")
+        // Add Y-Axis
+        const yAxisLHS = svg.append("g")
+            .attr("class", "y-axis-lhs")
             .attr("transform", "translate(0,0)")
-            .call(d3.axisLeft(yScale)
+            .call(d3.axisLeft(yScaleLHS)
+                .ticks(5)
+                .tickFormat(formatTick)
                 .tickSize(0));
 
         // Remove axis line
-        yAxis.select(".domain").remove();
+        yAxisLHS.select(".domain").remove();
+
+        // Add LHS Y-Axis title
+        yAxisLHS.append("rect")
+            .attr("x", -height / 2 - (120 * aspectRatio)) // Adjust the position to match the text
+            .attr("y", -margin.left / 4 * 3 - (12 * scaleFactor)) // Adjust for padding
+            .attr("width", 240 * aspectRatio) // Enough width to cover the text
+            .attr("height", 15 * scaleFactor) // Height covering the space of the text
+            .attr("transform", "rotate(-90)")
+            .style("fill", "#FFC000");
+
+        yAxisLHS.append("text")
+            .attr("class", "y-axis-lhs-title")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -height / 2) // Center the label
+            .attr("y", -margin.left / 4 * 3)
+            .style("fill", "black")
+            .style("font-size", `${13 * scaleFactor}px`)
+            .style("font-weight", "medium")
+            .style("text-anchor", "middle") // Center the text at the x-position
+            .text("No. of Permanent Dwellings Built");
+
+        // Add Y-Axis
+        const yAxisRHS = svg.append("g")
+            .attr("class", "y-axis-rhs")
+            .attr("transform", "translate(" + width + ",0)")
+            .call(d3.axisRight(yScaleRHS)
+                .ticks(5)
+                .tickFormat(formatMillions)
+                .tickSize(0));
+
+        // Remove axis line
+        yAxisRHS.select(".domain").remove();
+
+        // Add RHS Y-Axis title
+        yAxisRHS.append("rect")
+            .attr("x", -height / 2 - (75* aspectRatio)) // Adjust the position to match the text
+            .attr("y", margin.right / 4 * 3 - (1 * scaleFactor)) // Adjust for padding
+            .attr("width", 150 * aspectRatio) // Enough width to cover the text
+            .attr("height", 15 * scaleFactor) // Height covering the space of the text
+            .attr("transform", "rotate(-90)")
+            .style("fill", "#000");
+
+        yAxisRHS.append("text")
+            .attr("class", "y-axis-rhs-title")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -height / 2) // Center the label
+            .attr("y", margin.right / 4 * 3 + (11 * scaleFactor))
+            .style("fill", "#fff")
+            .style("font-size", `${13 * scaleFactor}px`)
+            .style("font-weight", "medium")
+            .style("text-anchor", "middle") // Center the text at the x-position
+            .text("Population Estimate");
 
         // Tick Text
         d3.selectAll(".tick text")
+            .style("fill", "grey")
             .style("font-size", `${13 * scaleFactor}px`)
+    }
+
+    // Function to add grid lines
+    function addGridlines(svg, yScaleLHS, width) {
+        svg.selectAll("line-horizontalGrid")
+            .data(yScaleLHS
+                .ticks(5))
+            .enter()
+            .append("line")
+            .attr("class", "horizontalGrid")
+            .attr("x1", 0)
+            .attr("x2", width)
+            .attr("y1", function (d) {
+                return yScaleLHS(d);
+            })
+            .attr("y2", function (d) {
+                return yScaleLHS(d);
+            })
+            .attr("fill", "none")
+            .attr("shape-rendering", "crispEdges")
+            .attr("stroke", "#F2F3F4")
+            .attr("stroke-width", "1px");
+    }
+
+    // PLOTTING FUNCTIONS ==============================================================================================
+    // Function to add the area between the two lines
+    function plotArea(svg, xScale, yScaleLHS, yScaleRHS) {
+        // Append a defs (definitions) section to your SVG
+        const defs = svg.append("defs");
+
+        // Create a pattern and append it to defs
+        const pattern = defs.append("pattern")
+            .attr("id", "diagonalHatch")  // Unique ID for referencing
+            .attr("patternUnits", "userSpaceOnUse")  // Use user coordinates
+            .attr("width", 4)  // Width of the pattern box
+            .attr("height", 4);  // Height of the pattern box
+
+        // Append a line to the pattern
+        pattern.append("path")
+            .attr("d", "M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2")  // Path for diagonal lines
+            .attr("stroke", "#F2F3F4")  // Line color
+            .attr("stroke-width", 2);  // Line thickness
+
+        // Define the area generator
+        const area = d3.area()
+            .x(function (d) {
+                return xScale(d.year);
+            })   // x-coordinate
+            .y0(function (d) {
+                return yScaleLHS(d.dwellings);
+            })  // y-coordinate for the top line (housing supply)
+            .y1(function (d) {
+                return yScaleRHS(d.population);
+            }) // y-coordinate for the bottom line (population)
+
+        // Draw the area
+        svg.append("path")
+            .datum(timeseriesData)
+            .attr("class", "area-between")
+            .attr("fill", "url(#diagonalHatch)")   // Choose a fill color that makes sense for your visualization
+            .attr("d", area);
+    }
+
+    // Function to add both lines
+    function plotData(svg, xScale, yScaleLHS, yScaleRHS) {
+        // Add the housing supply
+        svg.append("path")
+            .datum(timeseriesData)
+            .attr("fill", "none")
+            .attr("stroke", "#FFC000")
+            .attr("stroke-width", "3px")
+            .attr("d", d3.line()
+                .x(function (d) {
+                    return xScale(d.year)
+                })
+                .y(function (d) {
+                    return yScaleLHS(d.dwellings)
+                })
+            )
+
+        // Add the population
+        svg.append("path")
+            .datum(timeseriesData)
+            .attr("fill", "none")
+            .attr("stroke", "#000")
+            .attr("stroke-width", "3px")
+            .attr("d", d3.line()
+                .x(function (d) {
+                    return xScale(d.year)
+                })
+                .y(function (d) {
+                    return yScaleRHS(d.population)
+                })
+            )
+    }
+
+
+    // DRAW CHART ======================================================================================================
+    function drawChart() {
+        // Use the viewport width to determine width of svg container
+        const svgWidth = chartDiv.clientWidth;
+
+        // Get dimensions parameters from getDimensions function
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio} = setDimensions(svgWidth);
+
+        // Setup SVG using the setupSVG function
+        svg = setupSVG(baseWidth, baseHeight, margin);
+
+        // Setup scales
+        const {xScale, yScaleLHS, yScaleRHS} = setupScales(width, height);
+
+        // Draw axes
+        drawAxes(svg, margin, xScale, yScaleLHS, yScaleRHS, svgWidth, height, width, scaleFactor, aspectRatio);
+
+        // Draw data
+        plotArea(svg, xScale, yScaleLHS, yScaleRHS)
+
+        // Add gridlines
+        addGridlines(svg, yScaleLHS, width)
+
+        // Draw data
+        plotData(svg, xScale, yScaleLHS, yScaleRHS)
+
     }
 
     // TOOLTIP =========================================================================================================
@@ -263,28 +445,6 @@
             .style("opacity", 0);
     }
 
-    // PLOTTING FUNCTIONS ==============================================================================================
-
-
-    // DRAW CHART ======================================================================================================
-    function drawChart() {
-        // Use the viewport width to determine width of svg container
-        const svgWidth = chartDiv.clientWidth;
-
-        // Get dimensions parameters from getDimensions function
-        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
-
-        // Setup SVG using the setupSVG function
-        svg = setupSVG(baseWidth, baseHeight, margin);
-
-        // Setup scales
-        const {xScale, yScale} = setupScales(width, height);
-
-        // Draw axes
-        // drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor);
-
-
-    }
 
     // RESPONSIVE CHART ================================================================================================
     // Declare pymChild in the global scope if it's used globally
