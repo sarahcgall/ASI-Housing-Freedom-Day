@@ -42,7 +42,7 @@
             margin-right: 10px; /* Consistent spacing */
         }
 
-        #region label {
+        .region label {
             font-weight: 500;
             margin-bottom: 2.5px;
             flex-shrink: 0;
@@ -64,7 +64,7 @@
             text-overflow: ellipsis;
             overflow: hidden;
             display: block;
-            margin-left: 10px;
+            cursor: pointer;
         }
 
         /* Adjustments for small screens, below 410px */
@@ -79,6 +79,37 @@
                 margin-right: 20px;
             }
         }
+
+        #chart-container {
+            display: flex;
+            width: 100%; /* Full width of its parent container */
+            height: auto;
+        }
+
+        #chart-container .axis {
+            width: 5%; /* Width for both the left and right axis columns */
+            display: flex;
+            font-size: 13px;
+            font-weight: 500;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+            flex-direction: column; /* Stack children vertically */
+            writing-mode: vertical-lr; /* Rotate text for vertical reading */
+            transform: rotate(360deg); /* Rotate text 270 degrees for right axis */
+        }
+
+        #chart-container .graph {
+            width: 95%; /* Width for the graph */
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+        }
+
+        /* Additional styles for SVG positioning */
+        #supplydemandchart svg {
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 
@@ -86,8 +117,10 @@
 
 <!-- Container for heading and subheading -->
 <div>
-    <h3 style="margin-bottom: 0;">While England marks its Cost of Rent Day, most local areas are still working solely to pay their annual rental bill</h3>
-    <p style="margin-top: 5px;">Exploring the Distribution: number of local areas reaching their Cost of Rent Day by week</p>
+    <h3 style="margin-bottom: 0;">While England marks its Cost of Rent Day, most local areas are still working solely to
+        pay their annual rental bill</h3>
+    <p style="margin-top: 5px;">Exploring the Distribution: number of local areas reaching their Cost of Rent Day by
+        week</p>
 </div>
 
 <!-- Container for the Income and Rental inputs -->
@@ -103,7 +136,10 @@
 </div>
 
 <!-- Container for the histogram chart -->
-<div id="histogramchart"></div>
+<div id="chart-container">
+    <div class="graph" id="histogramchart"></div>
+    <div class="axis" id="right-axis">Number of Local Areas</div>
+</div>
 
 <!-- Container for the caption -->
 <div>
@@ -207,9 +243,9 @@
 
         // Calculate margins based on svgWidth
         const margin = {
-            top: 40 * aspectRatio,
-            right: 80 * aspectRatio,
-            bottom: 80 * aspectRatio,
+            top: 10 * aspectRatio,
+            right: 40 * aspectRatio,
+            bottom: 100 * aspectRatio,
             left: 10
         };
 
@@ -346,17 +382,6 @@
         // Remove axis line
         yAxis.select(".domain").remove();
 
-        // Add Y-axis title at the top
-        yAxis.append("text")
-            .attr("transform", "translate(10,-10)")
-            .style("text-anchor", "end")  // Align text to the end side
-            .text("Number of local areas")
-            .style("fill", "black");
-
-        // Y-Axis Title
-        d3.selectAll(".y-axis text")
-            .style("font-size", `${14 * scaleFactor}px`);
-
         // Tick Text
         d3.selectAll(".tick text")
             .style("font-size", `${13 * scaleFactor}px`)
@@ -365,7 +390,7 @@
 
     // ENGLAND LINE ====================================================================================================
     // Append a vertical line to highlight the 5th of May (England)
-    function drawLine(svg, xScale, yScale, height, scaleFactor) {
+    function drawLine(svg, xScale, yScale, height, scaleFactor, aspectRatio) {
         const may5 = new Date(calendarYear, 4, 6);
 
         svg.append("line")
@@ -379,7 +404,7 @@
 
         svg.append("text")
             .attr("x", xScale(may5) + 10)
-            .attr("y", 10)
+            .attr("y", 15 * aspectRatio)
             .text("England")
             .style("fill", "#333")
             .style("font-size", `${14 * scaleFactor}px`);
@@ -398,11 +423,11 @@
         const padding = 0.5;
         const squareSize = calculateSquareSize(bins, height, maxItems, padding);
 
-        // Create a color scale for regions
+        // Create a colour scale for regions
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
             .domain(regionData.map(d => d.region));
 
-        // Bind your data to rectangles (bars)
+        // Bind data to rectangles (bars)
         const bar = svg.selectAll(".bar")
             .data(bins)
             .enter().append("g")
@@ -415,7 +440,7 @@
             let yOffset = 0;
 
             binData.forEach((d, index) => {
-                g.append("rect")
+                const rect = g.append("rect")
                     .datum(d)
                     .attr("x", 1)
                     .attr("y", yOffset)
@@ -423,6 +448,18 @@
                     .attr("height", squareSize)
                     .attr("fill", "#4C72BE")
                     .attr("stroke", "#fff");
+
+                // Attach mouse events for tooltip
+                rect.on("mouseover", (event, d) => {
+                    if (lastRegion === "all" || d.region === lastRegion) {
+                        tooltip
+                            .html(`<b style="color:#4C72BE;">${d.countyName}</b>`)
+                            .style("opacity", 1)
+                            .style("left", (event.pageX) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    }
+                })
+                    .on("mouseout", () => tooltip.style("opacity", 0));
 
                 yOffset += squareSize + padding;  // Move yOffset for the next square
             });
@@ -450,12 +487,8 @@
         lastRegion = selectedRegion
     }
 
-    // LEGEND ==========================================================================================================
-    // Add Legend
-
-
     // TOOLTIP =========================================================================================================
-    // Globacl initialisation of tooltip
+    // Global initialisation of tooltip
     let tooltip = d3.select(chartDiv).select(".tooltip");
     if (tooltip.empty()) {
         tooltip = d3.select(chartDiv)
@@ -466,7 +499,7 @@
             .style("pointer-events", "none")
             .style("background-color", "white")
             .style("max-width", "150px")
-            .style("text-align", "center")
+            .style("text-align", "start")
             .style("font-size", "12px")
             .style("border", "solid 1px #ccc")
             .style("border-radius", "5px")
@@ -517,7 +550,7 @@
         const svgWidth = chartDiv.clientWidth;
 
         // Get dimensions parameters from getDimensions function
-        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio} = setDimensions(svgWidth);
 
         // Setup SVG using the setupSVG function
         svg = setupSVG(baseWidth, baseHeight, margin);
@@ -532,7 +565,7 @@
         drawAxes(svg, xScale, yScale, svgWidth, height, width, scaleFactor);
 
         // Draw England line
-        drawLine(svg, xScale, yScale, height, scaleFactor)
+        drawLine(svg, xScale, yScale, height, scaleFactor, aspectRatio)
 
         // Always redraw the region heatmap to maintain consistent region data display
         if (lastRegion) updateHighlight(lastRegion);
