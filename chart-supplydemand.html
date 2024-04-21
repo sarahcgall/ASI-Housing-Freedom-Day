@@ -17,6 +17,44 @@
             font-size: 14px;
             line-height: 18px;
         }
+
+        #chart-container {
+            display: flex;
+            width: 100%; /* Full width of its parent container */
+            height: auto;
+        }
+
+        #chart-container .axis {
+            width: 5%; /* Width for both the left and right axis columns */
+            display: flex;
+            font-size: 13px;
+            font-weight: 500;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+            flex-direction: column; /* Stack children vertically */
+            writing-mode: vertical-lr; /* Rotate text for vertical reading */
+        }
+
+        #left-axis {
+            transform: rotate(180deg); /* Correct the upside-down text orientation for left axis */
+        }
+
+        #right-axis {
+            transform: rotate(360deg); /* Rotate text 270 degrees for right axis */
+        }
+
+        #chart-container .graph {
+            width: 90%; /* Width for the graph */
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+        }
+
+        /* Additional styles for SVG positioning */
+        #supplydemandchart svg {
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 
@@ -24,14 +62,22 @@
 
 <!-- Container for heading and subheading -->
 <div>
-    <h3 style="margin-bottom: 0;">Since the 70s, England has seen a decreasing housing supply while the total population
-        has progressively increased</h3>
-    <p style="margin-top: 5px;">Total number of permanent dwellings built vs population estimates over time,
+    <h3 style="margin-bottom: 0;">Since the 70s, England's construction of new homes has lagged behind population
+        growth, signifying that new demand has outstripped supply</h3>
+    <p style="margin-top: 5px;">Comparative Analysis: number of permanent dwellings built vs. population estimates,
         1971-2022</p>
 </div>
 
-<!-- Container for the timeseries chart -->
-<div id="supplydemandchart"></div>
+<!-- Container for the supply/demand chart -->
+<div id="chart-container">
+    <div class="axis" id="left-axis">
+        <mark style="background-color: #FFC000; white-space: pre;"> No. of Permanent Dwellings Built </mark>
+    </div>
+    <div class="graph" id="supplydemandchart"></div>
+    <div class="axis" id="right-axis">
+        <mark style="color: #fff; background-color: #000; white-space: pre;"> Population Estimate </mark>
+    </div>
+</div>
 
 <!-- Container for the caption -->
 <div>
@@ -114,10 +160,10 @@
 
         // Calculate margins based on svgWidth
         const margin = {
-            top: 20 * aspectRatio,
-            right: 80 * aspectRatio,
-            bottom: 80 * aspectRatio,
-            left: 80 * aspectRatio
+            top: 30 * aspectRatio,
+            right: 60 * aspectRatio,
+            bottom: 30 * aspectRatio,
+            left: 65 * aspectRatio
         };
 
         // Calculate width and height using the margins
@@ -181,7 +227,7 @@
 
     function drawAxes(svg, margin, xScale, yScaleLHS, yScaleRHS, svgWidth, height, width, scaleFactor, aspectRatio) {
         // Determine number of ticks based on the width
-        const maxTicks = svgWidth > 650 ? 10 : svgWidth > 350 ? 5 : 2;
+        const maxTicks = svgWidth > 650 ? 5 : svgWidth > 350 ? 4 : 3;
 
         // Add X-Axis at the bottom
         const xAxis = svg.append("g")
@@ -189,7 +235,7 @@
             .attr("transform", "translate(0," + height + ")")
             .call(d3.axisBottom(xScale)
                 .ticks(maxTicks)
-                .tickSize(2)
+                .tickSize(3)
                 .tickSizeOuter(0)) // Remove outer ticks
             .selectAll(".tick line")
             .style("stroke", "grey")
@@ -207,26 +253,6 @@
         // Remove axis line
         yAxisLHS.select(".domain").remove();
 
-        // Add LHS Y-Axis title
-        yAxisLHS.append("rect")
-            .attr("x", -height / 2 - (120 * aspectRatio)) // Adjust the position to match the text
-            .attr("y", -margin.left / 4 * 3 - (12 * scaleFactor)) // Adjust for padding
-            .attr("width", 240 * aspectRatio) // Enough width to cover the text
-            .attr("height", 15 * scaleFactor) // Height covering the space of the text
-            .attr("transform", "rotate(-90)")
-            .style("fill", "#FFC000");
-
-        yAxisLHS.append("text")
-            .attr("class", "y-axis-lhs-title")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -height / 2) // Center the label
-            .attr("y", -margin.left / 4 * 3)
-            .style("fill", "black")
-            .style("font-size", `${13 * scaleFactor}px`)
-            .style("font-weight", "medium")
-            .style("text-anchor", "middle") // Center the text at the x-position
-            .text("No. of Permanent Dwellings Built");
-
         // Add Y-Axis
         const yAxisRHS = svg.append("g")
             .attr("class", "y-axis-rhs")
@@ -238,26 +264,6 @@
 
         // Remove axis line
         yAxisRHS.select(".domain").remove();
-
-        // Add RHS Y-Axis title
-        yAxisRHS.append("rect")
-            .attr("x", -height / 2 - (75* aspectRatio)) // Adjust the position to match the text
-            .attr("y", margin.right / 4 * 3 - (1 * scaleFactor)) // Adjust for padding
-            .attr("width", 150 * aspectRatio) // Enough width to cover the text
-            .attr("height", 15 * scaleFactor) // Height covering the space of the text
-            .attr("transform", "rotate(-90)")
-            .style("fill", "#000");
-
-        yAxisRHS.append("text")
-            .attr("class", "y-axis-rhs-title")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -height / 2) // Center the label
-            .attr("y", margin.right / 4 * 3 + (11 * scaleFactor))
-            .style("fill", "#fff")
-            .style("font-size", `${13 * scaleFactor}px`)
-            .style("font-weight", "medium")
-            .style("text-anchor", "middle") // Center the text at the x-position
-            .text("Population Estimate");
 
         // Tick Text
         d3.selectAll(".tick text")
