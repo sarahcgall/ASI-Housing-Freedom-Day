@@ -71,11 +71,11 @@
 <!-- Container for the supply/demand chart -->
 <div id="chart-container">
     <div class="axis" id="left-axis">
-        <mark style="background-color: #FFC000; white-space: pre;"> No. of Permanent Dwellings Built </mark>
+        <mark style="background-color: #FFC000; white-space: pre;"> No. of Permanent Dwellings Built</mark>
     </div>
     <div class="graph" id="supplydemandchart"></div>
     <div class="axis" id="right-axis">
-        <mark style="color: #fff; background-color: #000; white-space: pre;"> Population Estimate </mark>
+        <mark style="color: #fff; background-color: #000; white-space: pre;"> Population Estimate</mark>
     </div>
 </div>
 
@@ -311,11 +311,6 @@
     }
 
     // TOOLTIP =========================================================================================================
-    // This allows to find the closest X index of the mouse:
-    const bisect = d3.bisector(function (d) {
-        return d.year;
-    }).left;
-
     // Global initialisation of tooltip
     let tooltip = d3.select(chartDiv).select(".tooltip");
     if (tooltip.empty()) {
@@ -446,6 +441,11 @@
 
     // Function to add tooltip
     function addTooltip(svg, xScale, height, width) {
+        // This allows to find the closest X index of the mouse:
+        const bisect = d3.bisector(function (d) {
+            return d.year;
+        }).left;
+
         // Create a line that travels along the x position of the cursor
         const focusLine = svg.append('line')
             .attr("stroke", "grey")
@@ -474,9 +474,13 @@
         function mousemove(event) {
             const x0 = xScale.invert(d3.pointer(event, this)[0]); // Gets the date from x position of the mouse
             const i = bisect(timeseriesData, x0, 1);
-            const d0 = timeseriesData[i - 1];
-            const d1 = timeseriesData[i];
-            const d = (d1 && d0) ? (x0 - d0.year > d1.year - x0 ? d1 : d0) : d0; // Safely handle edges of the data array
+            const d0 = timeseriesData[i - 1]; // represents the data point just before or at the mouse's x-coordinate
+            const d1 = timeseriesData[i]; // represents the data point just after the mouse's x-coordinate
+
+            // Check which data point is closer (d0 or d1)
+            const d = (d1 && d0) ? (x0 - d0.year > d1.year - x0 ? d1 : d0) : d0;
+
+            if (!d) return;  // Ensure we have a valid data point
 
             focusLine
                 .attr("x1", xScale(d.year))

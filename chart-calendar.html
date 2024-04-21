@@ -284,6 +284,8 @@
     async function fetchData() {
         try {
             const data = await d3.csv(csvFile);
+            let filteredData = []; // To hold the data that passes the checks
+
             data.forEach(d => {
                 // Check if the 'Day of the year', 'Income', and 'Rent' fields are properly populated
                 if (d['Day of the year'] && d['Income'] && d['Rent'] && d['Day of the year'].includes('/')) {
@@ -298,12 +300,13 @@
                                 rent: Number(d['Rent']),
                                 freedomDate: new Date(year, month - 1, day)
                             };
+                            filteredData.push(d); // Only add data that passes the checks
                         }
                     }
                 }
             });
 
-            updateDropdown(data);
+            updateDropdown(filteredData);
 
         } catch (error) {
             console.error("Error loading data:", error);
@@ -490,7 +493,7 @@
     }
 
     // TOOLTIP =========================================================================================================
-    // Globacl initialisation of tooltip
+    // Global initialisation of tooltip
     let tooltip = d3.select(chartDiv).select(".tooltip");
     if (tooltip.empty()) {
         tooltip = d3.select(chartDiv)
@@ -567,6 +570,12 @@
 
     // Draw and Update Regional heatmap
     function drawRegionHeatmap(region) {
+        // Clear existing tooltips
+        svg.selectAll(".region-day")
+            .on("mouseover", null)
+            .on("mousemove", null)
+            .on("mouseout", null);
+
         if (!regionData[region]) {
             console.error("No data available for the selected region:", region);
             return; // Exit the function if no data is available for the selected region
@@ -598,6 +607,7 @@
                 const currentDate = new Date(calendarYear, months.indexOf(d.month), d.day);
                 if (currentDate.getTime() === freedomDate.getTime()) {
                     d3.select(this)
+                        .classed("region-day", true)
                         .on("mouseover", function (event) {
                             tooltip.transition()
                                 .duration(200)
@@ -756,7 +766,12 @@
 
     // UPDATE CHART "ON CLICK" =========================================================================================
     function updateHeatmap(svg, freedomDay, income, rent) {
-        svg.selectAll(".day").classed("freedom-day", false);  // Remove the class from all days
+        // Clear existing tooltips
+        svg.selectAll(".personal-day")
+            .on("mouseover", null)
+            .on("mousemove", null)
+            .on("mouseout", null)
+            .classed("freedom-day", false);  // Remove the class from all days
 
         // Apply updates to each day rect
         svg.selectAll(".day")
@@ -775,6 +790,7 @@
                         .attr("opacity", 1) // Make opacity 100%
                         .on("end", () => {
                             selection.classed("freedom-day", true); // Apply the class after transition
+                            selection.classed("personal-day", true); //Apply class for tooltip
                             // Add event listeners after transition
                             selection
                             selection
