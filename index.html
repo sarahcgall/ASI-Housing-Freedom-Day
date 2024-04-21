@@ -179,6 +179,9 @@
                 monthly rental costs. The chart also provides a comparator of various regions and sub-districts across
                 England.<br>
                 <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>How do you compare? Calculate your Cost of Rent Day</i></strong><br>
+                <br>
                 <strong>Features:</strong><br>
                 <i style="font-weight: 500;">Region Selection</i>: a dropdown option has been included for users to
                 select different regions of England to compare themselves against. Each selected region appears on the
@@ -217,32 +220,133 @@
             <a href="chart-calendar.html">view chart</a>
         </div>
         <div style="padding-bottom: 20px;">
-            <h5>3. Histogram</h5>
-            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-orange)">IN PROGRESS</span></strong><br>
-                The purpose of the histogram is to show the frequencies of when each county's Cost of Rent Day falls
-                within the year. This visual demonstrates the stark difference between London and the rest of England.</p>
-            <a href="chart-histogram.html">view page</a>
+            <h5>3. Supply/Demand</h5>
+            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-green)">COMPLETE</span></strong>
+                <br>
+                The supply/demand chart (line chart) compares the number of permanent dwellings built in England vs.
+                population estimates between 1971 and 2020. It helps highlight that new demand has outstripped
+                supply.<br>
+                <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>Since the 70s, England's construction of new homes has lagged behind population growth,
+                    signifying that new demand has outstripped supply</i></strong><br>
+                <br>
+                <strong>Features:</strong><br>
+                <i style="font-weight: 500;">Responsiveness</i>: the chart scales across all devices, ensuring a
+                consistent text size and preventing tick labels from overlapping. To save space on smaller screens, the
+                year changes from being "1971" format to "'70" format.<br><br>
+
+                <i style="font-weight: 500;">Aesthetics</i>: colours have been used strategically to ensure user
+                understanding of the dual y-axis, which can cause confusion. The ASI yellow has been chosen for the
+                building houses colour against a contrasting black colour for population estimates. The area between the
+                two paths is shaded in a grey diagonal pattern.<br><br>
+
+                <i style="font-weight: 500;">Tooltip</i>: a tooltip has been added to show the year, number of
+                dwellings, and population for additional information. The tooltip is not specific to placement and
+                appears anywhere along the x-axis. For ease of comparison, a vertical line appears, connecting the two
+                timeseries paths.<br><br>
+
+            </p>
+            <a href="chart-supplydemand.html">view page</a>
         </div>
         <div style="padding-bottom: 20px;">
-            <h5>4. Timeseries</h5>
-            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-orange)">IN PROGRESS</span></strong><br>
-                The timeseries chart will show the percentage change in income and rent by region between 2019 and 2023.
-                This will indicate that in most regions, wage growth is outpacing rental increases, thus easing the
-                burden on renters.</p>
+            <h5>4. Bars and Line</h5>
+            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-red)">NOT STARTED</span></strong><br>
+                The bar and line charts show the median rent and income in England and its change in Cost of Rent Day between 2019 and 2023.<br>
+                <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>TBD</i></strong><br>
+                <br>
+                <strong>Features:</strong><br>
+                <i style="font-weight: 500;">Responsiveness</i>: the chart scales across all devices, ensuring a
+                consistent text size and preventing tick labels from overlapping.<br><br>
+
+                <i style="font-weight: 500;">Aesthetics</i>: to be added.<br><br>
+
+                <i style="font-weight: 500;">Tooltip</i>: a tooltip is yet to be added.<br><br>
+
+            </p>
+            <!--            <a href="chart-histogram.html">view page</a>-->
+        </div>
+        <div style="padding-bottom: 20px;">
+            <h5>5. Timeseries</h5>
+            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-orange)">IN PROGRESS</span></strong>
+                <br>
+                The timeseries chart (dumbbell chart) shows the percentage change in income and rent by region between
+                2019 and 2023. It indicates that there is some good news in most regions, with wage growth outpacing
+                rental increases, thus easing the burden on renters.<br>
+                <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>Over the past 5 years, wage growth has outpaced rental increases in most regions across
+                    England, shortening the Cost of Rent Day for renters</i></strong><br>
+                <br>
+                <strong>Features:</strong><br>
+                <i style="font-weight: 500;">Responsiveness</i>: the chart scales across all devices, ensuring a
+                consistent text size and preventing tick labels from overlapping. The labels for the "Change in x"
+                change to "&#916; in x" in smaller screen sizes to avoid overlapping text. A descriptor of what the
+                symbol means appears at this point under the y-axis labels.<br><br>
+
+                <i style="font-weight: 500;">Aesthetics</i>: the ASI red has been chosen for the change in rent, ASI
+                green for the change in income, and ASI blue for the change in Cost of Rent Day. These are to ensure
+                consistency of categorising these variables amongst all charts.<br><br>
+
+                <i style="font-weight: 500;">Tooltip</i>: a tooltip is yet to be added.<br><br>
+
+            </p>
             <a href="chart-timeseries.html">view page</a>
         </div>
         <div style="padding-bottom: 20px;">
-            <h5>5. Map</h5>
-            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-red)">NOT STARTED</span></strong><br>
-                The map will show the regional/geographic divide between the north and south of England.</p>
-            <!--            <a href="chart-histogram.html">view page</a>-->
+            <h5>6. Histogram</h5>
+            <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-orange)">IN PROGRESS</span></strong><br>
+                The purpose of the histogram is to show the frequencies of when each county's Cost of Rent Day falls
+                within the year. This visual demonstrates the stark difference between London and the rest of
+                England.<br>
+                <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>While England marks its Cost of Rent Day, most local areas are still working solely to pay
+                    their annual rental bill</i></strong><br>
+                <br>
+                <strong>Features:</strong><br>
+                <i style="font-weight: 500;">Responsiveness</i>: the chart scales across all devices, ensuring a
+                consistent text size and preventing tick labels from overlapping.<br><br>
+
+                <i style="font-weight: 500;">Aesthetics</i>: the ASI blue for the individual Cost of Rent Day's has been
+                chosen to ensure consistency of categories amongst all charts. For ease, and limiting the number of
+                colours used, the highlight region option retains full opacity for the highlighted region while making
+                the remaining regions have an opacity of 0.2.<br><br>
+
+                <i style="font-weight: 500;">Tooltip</i>: a tooltip is yet to be added.<br><br>
+
+                <i style="font-weight: 500;">Other Interactivity</i>: the user is able to highlight different regions so
+                that this can be compared to the 5th of May (England's Cost of Rent Day). Limiting highlighting to just
+                one region at a time aids the user's ability to digest the information and compare more effectively.<br><br>
+
+            </p>
+            <a href="chart-histogram.html">view page</a>
         </div>
         <div style="padding-bottom: 20px;">
-            <h5>6. Supply/Demand</h5>
+            <h5>7. Map</h5>
             <p style="padding-left: 20px; padding-top: 5px;"><strong>Status: <span style="color: var(--sg-red)">NOT STARTED</span></strong><br>
-                This chart will show the decreasing housing supply and increasing population size over time.</p>
+                The map will show the regional/geographic divide between the north and south of England.<br>
+                <br>
+                <strong>Title/Key Message:</strong><br>
+                <strong><i>Renters in the north of England will reach their Cost of Rent Day earlier than those in the
+                    south</i></strong><br>
+                <br>
+                <strong>Features:</strong><br>
+                <i style="font-weight: 500;">Responsiveness</i>: the chart scales across all devices, ensuring a
+                consistent text size and preventing tick labels from overlapping.<br><br>
+
+                <i style="font-weight: 500;">Aesthetics</i>: to be added.<br><br>
+
+                <i style="font-weight: 500;">Tooltip</i>: a tooltip is yet to be added.<br><br>
+
+                <i style="font-weight: 500;">Other Interactivity</i>: the user will have the ability to zoom into
+                different regions/local areas of the map.<br><br>
+            </p>
             <!--            <a href="chart-histogram.html">view page</a>-->
         </div>
+
     </div>
 </div>
 
