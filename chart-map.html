@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>Cost of Rent Histogram</title>
+    <title>Cost of Rent Map</title>
 
     <!-- Load Pym.js  -->
     <script type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>
@@ -22,69 +22,83 @@
 
 <body>
 
+<!-- Container for heading and subheading -->
 <div>
-    <h3 style="margin-bottom: 0;">Renters in the north of England will reach their Cost of Rent Day earlier than those in the south</h3>
-    <p style="margin-top: 5px;">Average number of days until Cost of Rent Day, by county</p>
+    <h3 style="margin-bottom: 0;">Renters in the north of England will reach their Cost of Rent Day earlier than those
+        in the south</h3>
+    <p style="margin-top: 5px;">Mapping: Average number of days until Cost of Rent Day, by county</p>
 </div>
 
 <!-- Container for the calendar chart -->
-<div id="calendarchart"></div>
+<div id="mapchart"></div>
+
+<!-- Container for the caption -->
+<div>
+    <p style="font-style: italic; color: #333; overflow: visible;">Data: ONS | Chart: Sarah C Gall<br><br></p>
+</div>
 
 <!-- d3.js chart -->
 <script type="module">
 
     // Import d3 to use in vanilla HTML (using CDN-hosted ES module bundle)
     import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+    import {interpolateYlGnBu} from "https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3/+esm";
+
+    // Import TopoJSON
+    import * as topojson from 'https://cdn.jsdelivr.net/npm/topojson@3.0.2/+esm';
 
     // Store the reference to the div element
-    const chartDiv = document.getElementById('calendarchart');
+    const chartDiv = document.getElementById('mapchart');
 
     // Declaring variables
-    const calendarYear = 2024;
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // Set months
-    const csvFile = 'Regional Data.csv'; // Path to your CSV file
-    let regionData = []; // Initialise regionData
-    let svg, x, y; // Define svg, x, and y
-    let lastRegion = 'England' // store most recent region (on load = England)
-    let lastFreedomDay = null; // store most recent freedomDay
+    const rawData = 'englandData.topojson'; // file pathway
+    let svg, englandData; // Define svg, x, and y
 
     // DATASET =========================================================================================================
-    // Asynchronous function to fetch and process data
+    // Asynchronous function to fetch and process GeoJSON data
     async function fetchData() {
         try {
-            const rawData = await d3.csv(csvFile);
-            // Filter Counties only and remove NAs/missing values from Day of the year
-            const filteredData = rawData.filter(function (d) {
-                return d.Category === "County" && d["Day of the year"];
-            });
-            const parsedData = filteredData.map(d => {
-                // Parse the date once, use for both
-                const date = d3.timeParse("%m/%d/%Y")(d["Day of the year"]);
-                return [
-                    {
-                        region: d.ParentRegion,
-                        countyName: d.Name,
-                        freedomDate: date,
-                        proportion: +d["Rent as a share of income"]
-                    },
-                ];
-            }).flat(); // Flatten the array of arrays into a single array
-            console.log(parsedData)
-            return parsedData;
+            const englandData = await d3.json(rawData);
+
+            console.log("TopoJSON loaded successfully:", englandData);
+
+            return englandData;
+
         } catch (error) {
-            console.error("Error loading data:", error);
-            return [];
+            console.error("Error loading GeoJSON data:", error);
+            return null; // Return null to indicate failure
         }
     }
 
+
     // SETUP FUNCTIONS =================================================================================================
+    // Function to calculate the aspect ratio based on linear interpolation
+    function calculateAspectRatio(svgWidth) {
+        // Define the minimum and maximum widths and their corresponding aspect ratios
+        const minWidth = 220;  // Width for aspectRatio = 1
+        const maxWidth = 650;  // Width for aspectRatio = 0.4
+        const minAspectRatio = 1.0;
+        const maxAspectRatio = 0.8;
+
+        if (svgWidth <= minWidth) {
+            return minAspectRatio;
+        } else if (svgWidth >= maxWidth) {
+            return maxAspectRatio;
+        } else {
+            // Calculate the slope of the line (change in aspect ratio over change in width)
+            const slope = (maxAspectRatio - minAspectRatio) / (maxWidth - minWidth);
+            // Use the line equation to calculate the aspect ratio for the current width
+            return minAspectRatio + slope * (svgWidth - minWidth);
+        }
+    }
+
     // Function to adjust margin
     function setDimensions(svgWidth) {
         // Set base width of chart area
         const baseWidth = 640;
 
         // Set base height dependent on screen size
-        const aspectRatio = svgWidth > 650 ? 0.4 : svgWidth > 350 ? 0.75 : 1;
+        const aspectRatio = calculateAspectRatio(svgWidth);
 
         // Calculate base height based on aspect ratio
         const baseHeight = baseWidth * aspectRatio;
@@ -93,36 +107,19 @@
         const scaleFactor = baseWidth / svgWidth;
 
         // Calculate margins based on svgWidth
-        let margin
-        if (svgWidth < 350) {
-            margin = {
-                top: 30,
-                right: 10,
-                bottom: 160,
-                left: 80
-            };
-        } else if (svgWidth < 650) {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 80,
-                left: 50
-            };
-        } else {
-            margin = {
-                top: 20,
-                right: 10,
-                bottom: 60,
-                left: 30
-            };
-        }
+        const margin = {
+            top: 10 * aspectRatio,
+            right: 10 * aspectRatio,
+            bottom: 10 * aspectRatio,
+            left: 10 * aspectRatio
+        };
 
         // Calculate width and height using the margins
         const width = baseWidth - margin.left - margin.right;
         const height = baseHeight - margin.top - margin.bottom;
 
         // Return the baseWidth, baseHeight, margin, width, height and scaleFactor
-        return {baseWidth, baseHeight, margin, width, height, scaleFactor};
+        return {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio};
     }
 
     // Function to set up the
@@ -136,104 +133,23 @@
             .attr("preserveAspectRatio", "xMidYMid meet")
             .attr("width", "100%")
             .attr("height", "100%")
-            .attr("overflow", "hidden")
-            .append("g")
+            .attr("overflow", "hidden");
+
+        // Create a group (g element) which will be used to apply zoom transformations
+        const contentGroup = svg.append("g")
             .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-        return svg;
-    }
+        // Define zoom behaviour
+        const zoom = d3.zoom()
+            .scaleExtent([1, 10]) // This can be adjusted to set min and max zoom levels
+            .on("zoom", event => {
+                contentGroup.attr("transform", event.transform);
+            });
 
-    // Function to adjust text size based on SVG width
-    function adjustTextSize(scaleFactor) {
-        // Determine wrapping width based on screen size
-        const spacing = window.innerWidth > 350 ? 160 : 110
+        // Apply the zoom behaviour to the SVG
+        svg.call(zoom);
 
-        // Legend
-        d3.selectAll(".legendEntry text")
-            .style("font-size", `${14 * scaleFactor}px`);
-
-        // adjust legend position
-        d3.selectAll(".legendEntry")
-            .attr("transform", (d, i) => `translate(${i * spacing * scaleFactor}, 0)`);
-
-        // Tick Text
-        d3.selectAll(".tick text")
-            .style("font-size", `${13 * scaleFactor}px`)
-    }
-
-    // SCALE & AXES FUNCTIONS ==========================================================================================
-    // Function to set up the scales
-    function setupScales(width, height) {
-        // Days array for the X-axis (array [1, 2, ..., 31])
-        const days = Array.from({length: 31}, (_, i) => i + 1);
-
-        // Create an ordinal scale for Y-axis (months)
-        const yScale = d3.scaleBand()
-            .domain(months)
-            .range([0, height])
-            .padding(0.05); // Adjust padding to control space between bands
-
-        // Create an ordinal scale for X-axis (days)
-        const xScale = d3.scaleBand()
-            .domain(days)
-            .range([0, width])
-            .padding(0.05); // Adjust padding to control space between bands
-
-        return {xScale, yScale};
-    }
-
-    function drawAxes(svg, xScale, yScale, svgWidth) {
-        // Determine number of ticks based on the width
-        const maxTicks = svgWidth > 650 ? 31 : svgWidth > 350 ? 10 : 5;
-
-        // Calculate the tick values based on the maximum number of ticks
-        let tickValues = xScale.domain().filter(function (d, i) {
-            return !(i % Math.ceil(31 / maxTicks));
-        });
-
-        // Add X-axis at the top
-        const xAxis = d3.axisTop(xScale)
-            .tickValues(tickValues)  // Set custom tick values
-            .tickSize(0); // Hide tick marks
-
-        svg.append("g")
-            .attr("class", "x-axis")
-            .attr("transform", `translate(0, 0)`)
-            .call(xAxis)
-            .select(".domain").remove();
-
-        // Add Y-axis
-        const yAxis = d3.axisLeft(yScale)
-            .tickSize(0); // Hide tick marks
-
-        svg.append("g")
-            .attr("class", "y-axis")
-            .attr("transform", `translate(0, 0)`)
-            .call(yAxis)
-            .select(".domain").remove();
-    }
-
-    // BASE DATA FUNCTIONS =============================================================================================
-    // Function to determine the number of days in each month
-    function getDaysInMonth(month, year) {
-        return new Date(year, month, 0).getDate();
-    }
-
-    // Function to generate heat map
-    function generateHeatmapData(year) {
-        const heatmapData = [];
-
-        months.forEach((month, i) => {
-            const numDays = getDaysInMonth(i + 1, year);
-            for (let day = 1; day <= numDays; day++) {
-                heatmapData.push({
-                    day: day,
-                    month: month
-                });
-            }
-        });
-
-        return heatmapData;
+        return {svg, contentGroup};
     }
 
     // TOOLTIP =========================================================================================================
@@ -293,9 +209,110 @@
             .style("opacity", 0);
     }
 
-    // PLOTTING FUNCTIONS ==============================================================================================
+    // MAPPING FUNCTIONS ===============================================================================================
+    function convertDaysToDate(days) {
+        const baseDate = new Date('2024-01-01'); // Adjust the year accordingly
+        const daysRounded = Math.floor(days); // Handling the fractional part by rounding down
+        const hours = (days - daysRounded) * 24; // Convert fractional day to hours if needed
 
+        // Add the days to the base date
+        baseDate.setDate(baseDate.getDate() + daysRounded);
 
+        return baseDate.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}); // Formats the date as "5 May"
+    }
+
+    // Function to draw the map using GeoJSON data
+    function drawMap(contentGroup, width, height) {
+        // Create a patterns section in your SVG
+        const defs = contentGroup.append("defs");
+
+        // Create a pattern and append it to defs
+        const pattern = defs.append("pattern")
+            .attr("id", "diagonalHatch")  // Unique ID for referencing
+            .attr("patternUnits", "userSpaceOnUse")  // Use user coordinates
+            .attr("width", 4)  // Width of the pattern box
+            .attr("height", 4);  // Height of the pattern box
+
+        // Append a line to the pattern
+        pattern.append("path")
+            .attr("d", "M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2")  // Path for diagonal lines
+            .attr("stroke", "#aaa")  // Line color
+            .attr("stroke-width", 0.5);  // Line thickness
+
+        // Unzip TopoJSON into GeoJSON a file
+        const geojsonData = topojson.feature(englandData, englandData.objects.englandData);
+
+        // Setup the map projection
+        const projection = d3.geoMercator()
+            .fitSize([width, height], geojsonData);
+
+        // Setup the path generator
+        const pathGenerator = d3.geoPath().projection(projection);
+
+        // Invert the interpolator
+        // const invertedInterpolate = t => interpolateRdYlGn(1 - t);
+
+        // Define the colour scale
+        const colourScale = d3.scaleSequential(interpolateYlGnBu)
+            .domain([70, 268]);
+
+        // Add TopoJSON paths to the SVG
+        contentGroup.selectAll('path')
+            .data(geojsonData.features)
+            .enter()
+            .append('path')
+            .attr('d', pathGenerator)
+            .attr('fill', function (d) {
+                // Check for missing data condition
+                if (d.properties.CoRDay === undefined || d.properties.CoRDay === null) {
+                    return "url(#diagonalHatch)";  // Use the defined pattern
+                } else {
+                    // Else apply other colour scales as before
+                    return d.properties.Category === 'County' ? colourScale(d.properties.CoRDay) : 'none';
+                }
+            })
+            .attr('stroke', function (d) {
+                // Conditional stroke color based on the 'Category' property
+                return d.properties.Category === 'County' ? '#F2F3F4' : 'black';
+            })
+            .attr('stroke-width', function (d) {
+                // You could also vary stroke width or other properties
+                return d.properties.Category === 'County' ? 0.5 : 1;
+            })
+            .on('mouseover', function (event, d) {
+                if (d.properties.Category === 'County') {
+                    let dateStr = "No Data"; // Default to N/A
+                    if (d.properties.CoRDay !== null && d.properties.CoRDay !== undefined) {
+                        dateStr = convertDaysToDate(d.properties.CoRDay);
+                    }
+
+                    d3.select(this)
+                        .attr('stroke-width', 1);  // Highlight stroke width
+
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 1);
+                    tooltip.html(`<b>${d.properties.Name}</b><br/>Cost of Rent Day: ${dateStr}`)
+                        .style('left', (event.pageX) + 'px')
+                        .style('top', (event.pageY - 28) + 'px');
+                }
+            })
+            .on('mousemove', function (event, d) {
+                if (d.properties.Category === 'County') {
+                    adjustTooltipPosition(event, tooltip);
+                }
+            })
+            .on('mouseout', function (event, d) {
+                if (d.properties.Category === 'County') {
+                    d3.select(this)
+                        .attr('stroke-width', 0.5);  // Reset to normal stroke width
+
+                    tooltip.transition()
+                        .duration(500)
+                        .style('opacity', 0);
+                }
+            });
+    }
 
     // LEGEND ==========================================================================================================
     // Add Legend
@@ -307,19 +324,13 @@
         const svgWidth = chartDiv.clientWidth;
 
         // Get dimensions parameters from getDimensions function
-        const {baseWidth, baseHeight, margin, width, height, scaleFactor} = setDimensions(svgWidth);
+        const {baseWidth, baseHeight, margin, width, height, scaleFactor, aspectRatio} = setDimensions(svgWidth);
 
         // Setup SVG using the setupSVG function
-        svg = setupSVG(baseWidth, baseHeight, margin);
+        const {svg, contentGroup} = setupSVG(baseWidth, baseHeight, margin);
 
-        // Setup scales
-        const {xScale, yScale} = setupScales(width, height);
-
-        // Draw axes
-        drawAxes(svg, xScale, yScale, svgWidth);
-
-        // Adjust text size
-        adjustTextSize(scaleFactor);
+        // Draw the map with loaded GeoJSON data
+        drawMap(contentGroup, width, height);
 
     }
 
@@ -329,9 +340,9 @@
 
     // Function to initialise and load data (only once)
     async function initialiseChart() {
-        regionData = await fetchData(); // Load and parse the data
-        if (Object.keys(regionData).length === 0) {
-            console.error("No data available to draw the chart.");
+        englandData = await fetchData(); // Load GeoJSON data
+        if (!englandData) {
+            console.error("No GeoJSON data available to draw the map.");
             return; // Exit if data is not available
         }
         responsiveChart();
@@ -339,7 +350,7 @@
 
     // Function to draw the chart and handle responsiveness
     function responsiveChart() {
-        if (Object.keys(regionData).length === 0) {
+        if (!englandData) {
             console.error("Data not ready when responsiveChart called.");
             return;
         }
