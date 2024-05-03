@@ -26,7 +26,7 @@
 <div>
     <h3 style="margin-bottom: 0;">Renters in the north of England will reach their Cost of Rent Day earlier than those
         in the south</h3>
-    <p style="margin-top: 5px;">Mapping: Average number of days until Cost of Rent Day, by county</p>
+    <p style="margin-top: 5px;">Average number of days until Cost of Rent Day, by county</p>
 </div>
 
 <!-- Container for the calendar chart -->
@@ -52,15 +52,14 @@
 
     // Declaring variables
     const rawData = 'englandData.topojson'; // file pathway
-    let svg, englandData; // Define svg, x, and y
+    let svg, englandData; // Define svg and englandData
+    let currentZoomScale = 1;  // Default scale is 1
 
     // DATASET =========================================================================================================
     // Asynchronous function to fetch and process GeoJSON data
     async function fetchData() {
         try {
             const englandData = await d3.json(rawData);
-
-            console.log("TopoJSON loaded successfully:", englandData);
 
             return englandData;
 
@@ -69,7 +68,6 @@
             return null; // Return null to indicate failure
         }
     }
-
 
     // SETUP FUNCTIONS =================================================================================================
     // Function to calculate the aspect ratio based on linear interpolation
@@ -135,21 +133,63 @@
             .attr("height", "100%")
             .attr("overflow", "hidden");
 
+        // Create a patterns section in your SVG
+        const defs = svg.append("defs");
+        setupPatterns(defs);
+
         // Create a group (g element) which will be used to apply zoom transformations
         const contentGroup = svg.append("g")
             .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
         // Define zoom behaviour
         const zoom = d3.zoom()
-            .scaleExtent([1, 10]) // This can be adjusted to set min and max zoom levels
+            .scaleExtent([1, 20]) // Adjust to set min and max zoom levels
+            .extent([[0, 0], [baseWidth, baseHeight]])
             .on("zoom", event => {
-                contentGroup.attr("transform", event.transform);
+                // Update current scale
+                currentZoomScale = event.transform.k; // Update current scale
+
+                // Apply transformation
+                contentGroup.attr("transform", event.transform.toString());
+
+                // Adjust stroke width based on zoom level
+                contentGroup.selectAll('path') // Assuming you want to adjust paths, can be any selector
+                    .style("stroke-width", 0.5 / currentZoomScale); // Adjusts stroke width inversely with zoom
+
+                // adjust pattern
+                adjustPatternsOnZoom(currentZoomScale, defs);
+
             });
 
         // Apply the zoom behaviour to the SVG
         svg.call(zoom);
 
         return {svg, contentGroup};
+    }
+
+    // Function to set up diagonal pattern
+    function setupPatterns(defs) {
+        // Assuming defs is already defined globally
+        const pattern = defs.append("pattern")
+            .attr("id", "diagonalHatch")
+            .attr("patternUnits", "userSpaceOnUse")
+            .attr("width", 4)
+            .attr("height", 4);
+
+        pattern.append("path")
+            .attr("d", "M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2")
+            .attr("opacity", "0.5")
+            .attr("stroke", "#aaa")
+            .attr("stroke-width", 1);
+    }
+
+    // Function to dynamically adjust pattern size and line stroke
+    function adjustPatternsOnZoom(scale, defs) {
+        defs.select("#diagonalHatch")
+            .attr("width", 4 / scale)  // Scale pattern size based on zoom (inversely)
+            .attr("height", 4 / scale);
+        defs.select("#diagonalHatch path")
+            .attr("stroke-width", 1 * scale); // Adjust line thickness inversely with zoom
     }
 
     // TOOLTIP =========================================================================================================
@@ -178,23 +218,37 @@
         maximumFractionDigits: 0
     });
 
+    // Function to add tooltip
+    function addTooltip(tooltip) {
+        tooltip.transition()
+            .duration(200)
+            .style('opacity', 1);
+    }
+
     // Function to dynamically adjust tooltip position
     function adjustTooltipPosition(event, tooltip) {
-        const tooltipWidth = 150; // Approximate width of the tooltip
-        const tooltipHeight = 150; // Approximate height of the tooltip
-        const padding = 20; // Padding from the edges of the viewport
+        let xPosition, yPosition;
 
         // Coordinates where the tooltip should appear
-        let xPosition = event.pageX;
-        let yPosition = event.pageY;
+        if (event.touches) {
+            xPosition = event.touches[0].clientX;
+            yPosition = event.touches[0].clientY;
+        } else {
+            xPosition = event.pageX;
+            yPosition = event.pageY;
+        }
+
+        const tooltipWidth = 100; // Approximate width of the tooltip
+        const tooltipHeight = 60; // Approximate height of the tooltip
+
 
         // Check if the tooltip would go out of bounds
         if (xPosition + tooltipWidth > window.innerWidth) {
-            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+            xPosition -= tooltipWidth; // Flip to the left side
         }
 
         if (yPosition + tooltipHeight > window.innerHeight) {
-            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+            yPosition -= tooltipHeight; // Flip above the cursor
         }
 
         tooltip
@@ -202,6 +256,7 @@
             .style("top", `${yPosition}px`);
     }
 
+    // Function to remove tooltip
     function removeTooltip(tooltip) {
         tooltip
             .transition()
@@ -212,7 +267,7 @@
     // MAPPING FUNCTIONS ===============================================================================================
     function convertDaysToDate(days) {
         const baseDate = new Date('2024-01-01'); // Adjust the year accordingly
-        const daysRounded = Math.floor(days); // Handling the fractional part by rounding down
+        const daysRounded = days + 1; // Adding one day for freedom date
         const hours = (days - daysRounded) * 24; // Convert fractional day to hours if needed
 
         // Add the days to the base date
@@ -223,22 +278,6 @@
 
     // Function to draw the map using GeoJSON data
     function drawMap(contentGroup, width, height) {
-        // Create a patterns section in your SVG
-        const defs = contentGroup.append("defs");
-
-        // Create a pattern and append it to defs
-        const pattern = defs.append("pattern")
-            .attr("id", "diagonalHatch")  // Unique ID for referencing
-            .attr("patternUnits", "userSpaceOnUse")  // Use user coordinates
-            .attr("width", 4)  // Width of the pattern box
-            .attr("height", 4);  // Height of the pattern box
-
-        // Append a line to the pattern
-        pattern.append("path")
-            .attr("d", "M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2")  // Path for diagonal lines
-            .attr("stroke", "#aaa")  // Line color
-            .attr("stroke-width", 0.5);  // Line thickness
-
         // Unzip TopoJSON into GeoJSON a file
         const geojsonData = topojson.feature(englandData, englandData.objects.englandData);
 
@@ -248,9 +287,6 @@
 
         // Setup the path generator
         const pathGenerator = d3.geoPath().projection(projection);
-
-        // Invert the interpolator
-        // const invertedInterpolate = t => interpolateRdYlGn(1 - t);
 
         // Define the colour scale
         const colourScale = d3.scaleSequential(interpolateYlGnBu)
@@ -279,43 +315,101 @@
                 // You could also vary stroke width or other properties
                 return d.properties.Category === 'County' ? 0.5 : 1;
             })
-            .on('mouseover', function (event, d) {
+            .on('mouseover touchstart', function (event, d) {
                 if (d.properties.Category === 'County') {
                     let dateStr = "No Data"; // Default to N/A
                     if (d.properties.CoRDay !== null && d.properties.CoRDay !== undefined) {
                         dateStr = convertDaysToDate(d.properties.CoRDay);
                     }
 
-                    d3.select(this)
-                        .attr('stroke-width', 1);  // Highlight stroke width
+                    // Highlight stroke width
+                    d3.select(this).style("stroke-width", (1 / currentZoomScale) * 2);
 
-                    tooltip.transition()
-                        .duration(200)
-                        .style('opacity', 1);
+                    addTooltip(tooltip);
+
                     tooltip.html(`<b>${d.properties.Name}</b><br/>Cost of Rent Day: ${dateStr}`)
                         .style('left', (event.pageX) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
                 }
-            })
-            .on('mousemove', function (event, d) {
+
+            }, {passive: true})
+            .on('mousemove touchmove', function (event, d) {
                 if (d.properties.Category === 'County') {
                     adjustTooltipPosition(event, tooltip);
                 }
-            })
-            .on('mouseout', function (event, d) {
-                if (d.properties.Category === 'County') {
-                    d3.select(this)
-                        .attr('stroke-width', 0.5);  // Reset to normal stroke width
 
-                    tooltip.transition()
-                        .duration(500)
-                        .style('opacity', 0);
+            }, {passive: true})
+            .on('mouseout touchend', function (event, d) {
+                if (d.properties.Category === 'County') {
+                    d3.select(this).style("stroke-width", 1 / currentZoomScale);
+
+                    removeTooltip(tooltip);
                 }
-            });
+
+            }, {passive: true});
+
+        return colourScale;
+
     }
 
     // LEGEND ==========================================================================================================
     // Add Legend
+    function addLegend(svg, colourScale, height, scaleFactor, aspectRatio) {
+        // Define the size and position of the legend
+        const legendWidth = 200;
+        const legendHeight = 20 * aspectRatio;
+        const legendMargin = {
+            top: 10,
+            right: 10,
+            bottom: 30,
+            left: 10 * aspectRatio
+        };
+
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(0,0)`);
+
+        // Define and append legend's scale
+        const legendScale = d3.scaleLinear()
+            .domain(colourScale.domain())
+            .range([0, legendWidth]);
+
+        // Append the axis to the legend
+        const legendAxis = d3.axisBottom(legendScale)
+            .tickValues([125])
+            .tickSize(1)
+            .tickFormat((d) => {
+                if (d === 125) {
+                    return "125 days"; // Change the label for 125 days
+                } else {
+                    return ""; // Hide labels for other ticks
+                }
+            });
+
+        legend.append("g")
+            .attr("class", "legend-axis")
+            .attr("transform", `translate(0, ${legendHeight})`)
+            .call(legendAxis)
+            .select(".domain").remove();
+
+        // Dynamically adjust Tick Text
+        d3.selectAll(".tick text")
+            .style("font-size", `${12 * scaleFactor}px`)
+
+        // Draw the colour legend rectangle
+        const numRects = 100; // Number of rectangles
+        const rectWidth = legendWidth / numRects;
+        const domainValues = colourScale.ticks(numRects); // Get values from colour scale domain
+        domainValues.forEach((value, i) => {
+            const fillColour = colourScale(value);
+            legend.append("rect")
+                .attr("x", i * rectWidth - 1)
+                .attr("y", 0)
+                .attr("width", rectWidth + 2)
+                .attr("height", legendHeight)
+                .style("fill", fillColour);
+        });
+    }
 
 
     // DRAW CHART ======================================================================================================
@@ -330,8 +424,10 @@
         const {svg, contentGroup} = setupSVG(baseWidth, baseHeight, margin);
 
         // Draw the map with loaded GeoJSON data
-        drawMap(contentGroup, width, height);
+        const colourScale = drawMap(contentGroup, width, height);
 
+        // Add legend
+        addLegend(svg, colourScale, height, scaleFactor, aspectRatio);
     }
 
     // RESPONSIVE CHART ================================================================================================
@@ -344,12 +440,13 @@
         if (!englandData) {
             console.error("No GeoJSON data available to draw the map.");
             return; // Exit if data is not available
+        } else {
+            responsiveChart(englandData);
         }
-        responsiveChart();
     }
 
     // Function to draw the chart and handle responsiveness
-    function responsiveChart() {
+    function responsiveChart(englandData) {
         if (!englandData) {
             console.error("Data not ready when responsiveChart called.");
             return;
@@ -371,6 +468,22 @@
             console.error("Error initialising pymChild:", error);
         }
     });
+
+    // Prevent browser violation messages due to zoom
+    (function () {
+        if (typeof EventTarget !== "undefined") {
+            let func = EventTarget.prototype.addEventListener;
+            EventTarget.prototype.addEventListener = function (type, fn, capture) {
+                this.func = func;
+                if (typeof capture !== "boolean") {
+                    capture = capture || {};
+                    capture.passive = false;
+                }
+                this.func(type, fn, capture);
+            };
+        }
+        ;
+    }());
 
     // On Resize
     d3.select(window).on("resize", responsiveChart);

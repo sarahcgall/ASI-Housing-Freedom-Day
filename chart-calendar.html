@@ -276,7 +276,7 @@
     const csvFile = 'Regional Data.csv'; // Path to CSV file
     let regionData = {}; // Initialise regionData
     let svg, x, y; // Define svg, x, and y
-    let lastRegion = 'England' // store most recent region (on load = England)
+    let lastRegion = null; // store most recent region (on load = England)
     let lastFreedomDay = null; // store most recent freedomDay
 
     // DATASET =========================================================================================================
@@ -518,23 +518,37 @@
         maximumFractionDigits: 0
     });
 
+    // Function to add tooltip
+    function addTooltip(tooltip) {
+        tooltip.transition()
+            .duration(200)
+            .style('opacity', 1);
+    }
+
     // Function to dynamically adjust tooltip position
-    function adjustTooltipPosition(event, tooltip) {
-        const tooltipWidth = 150; // Approximate width of the tooltip
-        const tooltipHeight = 150; // Approximate height of the tooltip
-        const padding = 20; // Padding from the edges of the viewport
+    function adjustTooltipPosition(event, tooltip, estHeight) {
+        let xPosition, yPosition;
 
         // Coordinates where the tooltip should appear
-        let xPosition = event.pageX;
-        let yPosition = event.pageY;
+        if (event.touches) {
+            xPosition = event.touches[0].clientX;
+            yPosition = event.touches[0].clientY;
+        } else {
+            xPosition = event.pageX;
+            yPosition = event.pageY;
+        }
+
+        const tooltipWidth = 150; // Approximate width of the tooltip
+        const tooltipHeight = estHeight; // Approximate height of the tooltip
+
 
         // Check if the tooltip would go out of bounds
         if (xPosition + tooltipWidth > window.innerWidth) {
-            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+            xPosition -= tooltipWidth; // Flip to the left side
         }
 
         if (yPosition + tooltipHeight > window.innerHeight) {
-            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+            yPosition -= tooltipHeight; // Flip above the cursor
         }
 
         tooltip
@@ -542,6 +556,7 @@
             .style("top", `${yPosition}px`);
     }
 
+    // Function to remove tooltip
     function removeTooltip(tooltip) {
         tooltip
             .transition()
@@ -572,9 +587,9 @@
     function drawRegionHeatmap(region) {
         // Clear existing tooltips
         svg.selectAll(".region-day")
-            .on("mouseover", null)
-            .on("mousemove", null)
-            .on("mouseout", null);
+            .on("mouseover touchstart", null)
+            .on("mousemove touchmove", null)
+            .on("mouseout touchend", null);
 
         if (!regionData[region]) {
             console.error("No data available for the selected region:", region);
@@ -608,35 +623,29 @@
                 if (currentDate.getTime() === freedomDate.getTime()) {
                     d3.select(this)
                         .classed("region-day", true)
-                        .on("mouseover", function (event) {
-                            tooltip.transition()
-                                .duration(200)
-                                .style("opacity", 1);
-                            tooltip.html(`
-                    <p style="margin-bottom: 15px;">
-                    <span style="font-weight: bold; font-size: 13px; line-height: 13px;">${region}'s</span><br><br>
-                        <span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 13px; margin-bottom: 5px">
-                            Cost of Rent Day is:
-                        </span><br>
-                        <strong style="font-size: 16px; margin-top: 5px;">${freedomDate.toLocaleDateString('en-GB', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                            })}</strong>
-                    </p>
-                    <p style="text-align: start; margin-top: 5px; margin-bottom: 0; font-size: 12px; line-height: 16px;">
-        This was based on:
-        <ul style="margin-top: 2.5px; padding-left: 20px; text-align: start;">
-            <li><strong>&#163;${formatter.format(income)}</strong> annual income</li>
-            <li><strong>&#163;${formatter.format(rent)}</strong> monthly rent</li>
-        </ul>
-    </p>
-                `)
+                        .on("mouseover touchstart", function (event) {
+                            addTooltip(tooltip);
+
+                            tooltip.html(
+                                `<p style="margin-bottom: 15px;"><span style="font-weight: bold; font-size: 13px; line-height: 13px;">${region}'s</span><br><br>` +
+                                `<span style="font-style: italic; font-weight: bold; color: #4C72BE; font-size: 13px; margin-bottom: 5px">Cost of Rent Day is: </span><br>` +
+                                `<strong style="font-size: 16px; margin-top: 5px;">${freedomDate.toLocaleDateString('en-GB', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
+                                })}</strong></p>` +
+                                `<p style="text-align: start; margin-top: 5px; margin-bottom: 0; font-size: 12px; line-height: 16px;">This was based on:` +
+                                `<ul style="margin-top: 2.5px; padding-left: 20px; text-align: start;">` +
+                                `<li><strong>&#163;${formatter.format(income)}</strong> annual income</li>` +
+                                `<li><strong>&#163;${formatter.format(rent)}</strong> monthly rent</li>` +
+                                `</ul></p>`
+                            )
                                 .style("left", `${event.pageX}px`)
-                                .style("top", `${event.pageY - 28}px`);
-                        })
-                        .on("mousemove", event => adjustTooltipPosition(event, tooltip))
-                        .on("mouseout", () => removeTooltip(tooltip));
+                                .style("top", `${event.pageY - 10}px`);
+
+                        }, {passive: true})
+                        .on("mousemove touchmove", event => adjustTooltipPosition(event, tooltip, 190), {passive: true})
+                        .on("mouseout touchend", () => removeTooltip(tooltip), {passive: true});
                 }
             });
     }
@@ -768,9 +777,9 @@
     function updateHeatmap(svg, freedomDay, income, rent) {
         // Clear existing tooltips
         svg.selectAll(".personal-day")
-            .on("mouseover", null)
-            .on("mousemove", null)
-            .on("mouseout", null)
+            .on("mouseover touchstart", null)
+            .on("mousemove touchmove", null)
+            .on("mouseout touchend", null)
             .classed("freedom-day", false);  // Remove the class from all days
 
         // Apply updates to each day rect
@@ -794,30 +803,25 @@
                             // Add event listeners after transition
                             selection
                             selection
-                                .on("mouseover", function (event) {
-                                    tooltip.transition()
-                                        .duration(200)
-                                        .style("opacity", 1);
-                                    tooltip.html(`
-    <p style="margin-bottom: 15px;">
-        <span style="font-style: italic; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #4C72BE;">
-             Your Cost of Rent Day is:
-        </span><br>
-        <strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric'
-                                    })}</strong>
-    </p>
-    <p style="font-size: 12px; line-height: 16px;">
-    This means that in 2024, you worked <strong>${freedomDay.toFixed(0) - 1} days</strong> to pay for your rental bill.
-    </p>
-`)
+                                .on("mouseover touchstart", function (event) {
+                                    addTooltip(tooltip);
+
+                                    tooltip.html(
+                                        `<p style="margin-bottom: 15px;">` +
+                                        `<span style="font-style: italic; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #4C72BE;">Your Cost of Rent Day is:</span><br>` +
+                                        `<strong style="font-size: 16px; margin-top: 5px;">${date.toLocaleDateString('en-GB', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}</strong></p>` +
+                                        `<p style="font-size: 12px; line-height: 16px;">This means that in 2024, you worked <strong>${freedomDay.toFixed(0) - 1} days</strong> to pay for your rental bill.</p>`
+                                    )
                                         .style("left", (event.pageX) + "px")
-                                        .style("top", (event.pageY - 28) + "px");
-                                })
-                                .on("mousemove", event => adjustTooltipPosition(event, tooltip))
-                                .on("mouseout", () => removeTooltip(tooltip));
+                                        .style("top", (event.pageY - 10) + "px");
+
+                                }, {passive: true})
+                                .on("mousemove touchmove", event => adjustTooltipPosition(event, tooltip, 155), {passive: true})
+                                .on("mouseout touchend", () => removeTooltip(tooltip), {passive: true});
                         });
                 }
             });
@@ -878,21 +882,23 @@
     }, false);
 
     // RESPONSIVE CHART ================================================================================================
-    // Declare pymChild in the global scope if it's used globally
-    var pymChild;
-
     // Function to initialise and load data (only once)
     async function initialiseChart() {
-        await fetchData(); // Load and parse the data
+        await fetchData(); // This now properly waits for the completion
         if (Object.keys(regionData).length === 0) {
             console.error("No data available to draw the chart.");
-            return; // Exit if data is not available
+            return;
+        } else {
+            lastRegion = 'England'; // store most recent region (on load = England)
+            responsiveChart(regionData);
         }
-        responsiveChart();
     }
 
+    // Declare pymChild in the global scope if it's used globally
+    let pymChild;
+
     // Function to draw the chart and handle responsiveness
-    function responsiveChart() {
+    function responsiveChart(regionData) {
         if (Object.keys(regionData).length === 0) {
             console.error("Data not ready when responsiveChart called.");
             return;
@@ -906,10 +912,11 @@
     }
 
     // Initial Load
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", async function () {
         try {
             pymChild = new pym.Child({polling: 500}); // Setup with polling interval if needed
-            initialiseChart();
+            await initialiseChart();
+            pymChild.sendHeight();
         } catch (error) {
             console.error("Error initialising pymChild:", error);
         }

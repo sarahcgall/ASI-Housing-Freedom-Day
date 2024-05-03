@@ -450,7 +450,7 @@
                     .attr("stroke", "#fff");
 
                 // Attach mouse events for tooltip
-                rect.on("mouseover", (event, d) => {
+                rect.on("mouseover touchstart", (event, d) => {
                     if (lastRegion === "all" || d.region === lastRegion) {
                         tooltip
                             .html(`<b style="color:#4C72BE;">${d.countyName}</b>`)
@@ -458,8 +458,8 @@
                             .style("left", (event.pageX) + "px")
                             .style("top", (event.pageY - 28) + "px");
                     }
-                })
-                    .on("mouseout", () => tooltip.style("opacity", 0));
+                }, {passive: true})
+                    .on("mouseout touchend", () => tooltip.style("opacity", 0));
 
                 yOffset += squareSize + padding;  // Move yOffset for the next square
             });
@@ -515,26 +515,40 @@
 
     // Function to dynamically adjust tooltip position
     function adjustTooltipPosition(event, tooltip) {
-        const tooltipWidth = 150; // Approximate width of the tooltip
-        const tooltipHeight = 150; // Approximate height of the tooltip
-        const padding = 20; // Padding from the edges of the viewport
+        let xPosition, yPosition;
 
         // Coordinates where the tooltip should appear
-        let xPosition = event.pageX;
-        let yPosition = event.pageY;
+        if (event.touches) {
+            xPosition = event.touches[0].clientX;
+            yPosition = event.touches[0].clientY;
+        } else {
+            xPosition = event.pageX;
+            yPosition = event.pageY;
+        }
+
+        const tooltipWidth = 100; // Approximate width of the tooltip
+        const tooltipHeight = 60; // Approximate height of the tooltip
+
 
         // Check if the tooltip would go out of bounds
         if (xPosition + tooltipWidth > window.innerWidth) {
-            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+            xPosition -= tooltipWidth; // Flip to the left side
         }
 
         if (yPosition + tooltipHeight > window.innerHeight) {
-            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+            yPosition -= tooltipHeight; // Flip above the cursor
         }
 
         tooltip
             .style("left", `${xPosition}px`)
             .style("top", `${yPosition}px`);
+    }
+
+    // Function to add tooltip
+    function addTooltip(tooltip) {
+        tooltip.transition()
+            .duration(200)
+            .style('opacity', 1);
     }
 
     function removeTooltip(tooltip) {
@@ -582,12 +596,13 @@
         if (Object.keys(regionData).length === 0) {
             console.error("No data available to draw the chart.");
             return; // Exit if data is not available
+        } else {
+            responsiveChart(regionData);
         }
-        responsiveChart();
     }
 
     // Function to draw the chart and handle responsiveness
-    function responsiveChart() {
+    function responsiveChart(regionData) {
         if (Object.keys(regionData).length === 0) {
             console.error("Data not ready when responsiveChart called.");
             return;

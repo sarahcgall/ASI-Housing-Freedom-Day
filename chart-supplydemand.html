@@ -336,23 +336,37 @@
         maximumFractionDigits: 0
     });
 
+    // Function to add tooltip
+    function addTooltip(tooltip) {
+        tooltip.transition()
+            .duration(200)
+            .style('opacity', 1);
+    }
+
     // Function to dynamically adjust tooltip position
     function adjustTooltipPosition(event, tooltip) {
-        const tooltipWidth = 150; // Approximate width of the tooltip
-        const tooltipHeight = 150; // Approximate height of the tooltip
-        const padding = 20; // Padding from the edges of the viewport
+        let xPosition, yPosition;
 
         // Coordinates where the tooltip should appear
-        let xPosition = event.pageX;
-        let yPosition = event.pageY;
+        if (event.touches) {
+            xPosition = event.touches[0].clientX;
+            yPosition = event.touches[0].clientY;
+        } else {
+            xPosition = event.pageX;
+            yPosition = event.pageY;
+        }
+
+        const tooltipWidth = 100; // Approximate width of the tooltip
+        const tooltipHeight = 100; // Approximate height of the tooltip
+
 
         // Check if the tooltip would go out of bounds
         if (xPosition + tooltipWidth > window.innerWidth) {
-            xPosition = event.pageX - tooltipWidth; // Flip to the left side
+            xPosition -= tooltipWidth; // Flip to the left side
         }
 
         if (yPosition + tooltipHeight > window.innerHeight) {
-            yPosition = event.pageY - tooltipHeight; // Flip above the cursor
+            yPosition -= tooltipHeight; // Flip above the cursor
         }
 
         tooltip
@@ -440,7 +454,7 @@
     }
 
     // Function to add tooltip
-    function addTooltip(svg, xScale, height, width) {
+    function drawTooltip(svg, xScale, height, width) {
         // This allows to find the closest X index of the mouse:
         const bisect = d3.bisector(function (d) {
             return d.year;
@@ -461,15 +475,15 @@
             .attr("width", width)  // Assuming 'width' is the width of your chart area
             .attr("height", height)
             .style("opacity", 0)
-            .on("mouseover", function () {
+            .on("mouseover touchstart", function () {
                 focusLine.style("opacity", 1);
-                tooltip.style("opacity", 1);
-            })
-            .on("mouseout", function () {
+                addTooltip(tooltip);
+            }, {passive: true})
+            .on("mouseout touchmove", function () {
                 focusLine.style("opacity", 0);
                 removeTooltip(tooltip);
-            })
-            .on("mousemove", mousemove);
+            }, {passive: true})
+            .on("mousemove touchend", mousemove);
 
         function mousemove(event) {
             const x0 = xScale.invert(d3.pointer(event, this)[0]); // Gets the date from x position of the mouse
@@ -524,7 +538,7 @@
         plotData(svg, xScale, yScaleLHS, yScaleRHS)
 
         // Add tooltip
-        addTooltip(svg, xScale, height, width)
+        drawTooltip(svg, xScale, height, width)
 
     }
 
@@ -538,12 +552,13 @@
         if (Object.keys(timeseriesData).length === 0) {
             console.error("No data available to draw the chart.");
             return; // Exit if data is not available
+        } else {
+            responsiveChart(timeseriesData);
         }
-        responsiveChart();
     }
 
     // Function to draw the chart and handle responsiveness
-    function responsiveChart() {
+    function responsiveChart(timeseriesData) {
         if (Object.keys(timeseriesData).length === 0) {
             console.error("Data not ready when responsiveChart called.");
             return;
