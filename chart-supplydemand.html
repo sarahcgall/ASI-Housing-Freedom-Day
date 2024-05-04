@@ -44,7 +44,7 @@
         }
 
         #chart-container .graph {
-            width: 90%; /* Width for the graph */
+            width: 100%; /* Width for the graph */
             display: flex;
             justify-content: center; /* Center content horizontally */
             align-items: center; /* Center content vertically */
@@ -64,19 +64,20 @@
 <div>
     <h3 style="margin-bottom: 0;">Since the 70s, England's construction of new homes has lagged behind population
         growth, signifying that new demand has outstripped supply</h3>
-    <p style="margin-top: 5px;">Comparative Analysis: number of permanent dwellings built vs. population estimates,
-        1971-2022</p>
+    <p style="margin-top: 5px;">Comparative Analysis: <mark style="background-color: #FFC000; white-space: pre;"> number of permanent dwellings built </mark> vs.
+        <mark style="color: #fff; background-color: #000; white-space: pre;"> annual population change </mark>,
+        1972-2022</p>
 </div>
 
 <!-- Container for the supply/demand chart -->
 <div id="chart-container">
-    <div class="axis" id="left-axis">
-        <mark style="background-color: #FFC000; white-space: pre;"> No. of Permanent Dwellings Built </mark>
-    </div>
+<!--    <div class="axis" id="left-axis">-->
+<!--        <mark style="background-color: #FFC000; white-space: pre;"> No. of Permanent Dwellings Built </mark>-->
+<!--    </div>-->
     <div class="graph" id="supplydemandchart"></div>
-    <div class="axis" id="right-axis">
-        <mark style="color: #fff; background-color: #000; white-space: pre;"> Population Estimate </mark>
-    </div>
+<!--    <div class="axis" id="right-axis">-->
+<!--        <mark style="color: #fff; background-color: #000; white-space: pre;"> Population Change </mark>-->
+<!--    </div>-->
 </div>
 
 <!-- Container for the caption -->
@@ -94,7 +95,7 @@
     const chartDiv = document.getElementById('supplydemandchart');
 
     // Declaring variables
-    const csvFile = 'Supply Demand Data.csv'; // Path to CSV file
+    const csvFile = 'https://asi-cost-of-rent-day.s3.eu-west-2.amazonaws.com/Supply+Demand+Data.csv'; // Path to CSV file
     let timeseriesData = []; // Initialise timeseriesData
     let svg, x, y; // Define svg, x, and y
 
@@ -161,9 +162,9 @@
         // Calculate margins based on svgWidth
         const margin = {
             top: 30 * aspectRatio,
-            right: 60 * aspectRatio,
+            right: 10 * aspectRatio,
             bottom: 30 * aspectRatio,
-            left: 65 * aspectRatio
+            left: 50 * aspectRatio
         };
 
         // Calculate width and height using the margins
@@ -205,16 +206,11 @@
             .range([0, width]); // Adjust padding to control space between bands
 
         // Create a linear scale for LHS Y-axis (dwellings)
-        const yScaleLHS = d3.scaleLinear()
-            .domain([0, 350000])
+        const yScale = d3.scaleLinear()
+            .domain([-100000, 600000])
             .range([height, 0]); // Adjust padding to control space between bands
 
-        // Create a linear scale for RHS Y-axis (population)
-        const yScaleRHS = d3.scaleLinear()
-            .domain([0, 60000000])
-            .range([height, 0]); // Adjust padding to control space between bands
-
-        return {xScale, yScaleLHS, yScaleRHS};
+        return {xScale, yScale};
     }
 
     function formatTick(d) {
@@ -239,7 +235,7 @@
         return `'${year.toString().slice(-2)}`;  // Slice off the last two digits
     }
 
-    function drawAxes(svg, margin, xScale, yScaleLHS, yScaleRHS, svgWidth, height, width, scaleFactor, aspectRatio) {
+    function drawAxes(svg, margin, xScale, yScale, svgWidth, height, width, scaleFactor, aspectRatio) {
         // Determine number of ticks based on the width
         const maxTicks = svgWidth > 350 ? 5 : 3;
         const formattedTicks = svgWidth > 350 ? d3.timeFormat("%Y") : customYearFormat;
@@ -258,28 +254,16 @@
             .style("fill", "grey");
 
         // Add Y-Axis
-        const yAxisLHS = svg.append("g")
+        const yAxis = svg.append("g")
             .attr("class", "y-axis-lhs")
             .attr("transform", "translate(0,0)")
-            .call(d3.axisLeft(yScaleLHS)
+            .call(d3.axisLeft(yScale)
                 .ticks(5)
                 .tickFormat(formatTick)
                 .tickSize(0));
 
         // Remove axis line
-        yAxisLHS.select(".domain").remove();
-
-        // Add Y-Axis
-        const yAxisRHS = svg.append("g")
-            .attr("class", "y-axis-rhs")
-            .attr("transform", "translate(" + width + ",0)")
-            .call(d3.axisRight(yScaleRHS)
-                .ticks(5)
-                .tickFormat(formatMillions)
-                .tickSize(0));
-
-        // Remove axis line
-        yAxisRHS.select(".domain").remove();
+        yAxis.select(".domain").remove();
 
         // Tick Text
         d3.selectAll(".tick text")
@@ -289,9 +273,9 @@
 
     // BASE FUNCTIONS ==================================================================================================
     // Function to add grid lines
-    function addGridlines(svg, yScaleLHS, width) {
+    function addGridlines(svg, yScale, width) {
         svg.selectAll("line-horizontalGrid")
-            .data(yScaleLHS
+            .data(yScale
                 .ticks(5))
             .enter()
             .append("line")
@@ -299,10 +283,10 @@
             .attr("x1", 0)
             .attr("x2", width)
             .attr("y1", function (d) {
-                return yScaleLHS(d);
+                return yScale(d);
             })
             .attr("y2", function (d) {
-                return yScaleLHS(d);
+                return yScale(d);
             })
             .attr("fill", "none")
             .attr("shape-rendering", "crispEdges")
@@ -321,7 +305,7 @@
             .style("position", "absolute")
             .style("pointer-events", "none")
             .style("background-color", "white")
-            .style("max-width", "150px")
+            .style("max-width", "200px")
             .style("text-align", "start")
             .style("font-size", "12px")
             .style("border", "solid 1px #ccc")
@@ -356,7 +340,7 @@
             yPosition = event.pageY;
         }
 
-        const tooltipWidth = 100; // Approximate width of the tooltip
+        const tooltipWidth = 200; // Approximate width of the tooltip
         const tooltipHeight = 100; // Approximate height of the tooltip
 
 
@@ -383,7 +367,7 @@
 
     // PLOTTING FUNCTIONS ==============================================================================================
     // Function to add the area between the two lines
-    function plotArea(svg, xScale, yScaleLHS, yScaleRHS) {
+    function plotArea(svg, xScale, yScale) {
         // Append a defs (definitions) section to your SVG
         const defs = svg.append("defs");
 
@@ -406,10 +390,10 @@
                 return xScale(d.year);
             })   // x-coordinate
             .y0(function (d) {
-                return yScaleLHS(d.dwellings);
+                return yScale(d.dwellings);
             })  // y-coordinate for the top line (housing supply)
             .y1(function (d) {
-                return yScaleRHS(d.population);
+                return yScale(d.population);
             }) // y-coordinate for the bottom line (population)
 
         // Draw the area
@@ -421,22 +405,7 @@
     }
 
     // Function to add both lines
-    function plotData(svg, xScale, yScaleLHS, yScaleRHS) {
-        // Add the housing supply
-        svg.append("path")
-            .datum(timeseriesData)
-            .attr("fill", "none")
-            .attr("stroke", "#FFC000")
-            .attr("stroke-width", "3px")
-            .attr("d", d3.line()
-                .x(function (d) {
-                    return xScale(d.year)
-                })
-                .y(function (d) {
-                    return yScaleLHS(d.dwellings)
-                })
-            )
-
+    function plotData(svg, xScale, yScale) {
         // Add the population
         svg.append("path")
             .datum(timeseriesData)
@@ -448,7 +417,22 @@
                     return xScale(d.year)
                 })
                 .y(function (d) {
-                    return yScaleRHS(d.population)
+                    return yScale(d.population)
+                })
+            )
+
+        // Add the housing supply
+        svg.append("path")
+            .datum(timeseriesData)
+            .attr("fill", "none")
+            .attr("stroke", "#FFC000")
+            .attr("stroke-width", "3px")
+            .attr("d", d3.line()
+                .x(function (d) {
+                    return xScale(d.year)
+                })
+                .y(function (d) {
+                    return yScale(d.dwellings)
                 })
             )
     }
@@ -502,7 +486,7 @@
                 .style("opacity", 1);
 
             tooltip
-                .html(`<b>Year:</b> ${d.year.getFullYear()}<br><b>Population:</b> ${formatter.format(d.population)}<br><b>Dwellings Built:</b> ${formatter.format(d.dwellings)}<br>`)
+                .html(`<b>Year:</b> ${d.year.getFullYear()}<br><b>Dwellings Built:</b> ${formatter.format(d.dwellings)}<br><b>Population Change:</b> ${formatter.format(d.population)}<br>`)
                 .style("opacity", 1);
 
             adjustTooltipPosition(event, tooltip);
@@ -523,19 +507,19 @@
         svg = setupSVG(baseWidth, baseHeight, margin);
 
         // Setup scales
-        const {xScale, yScaleLHS, yScaleRHS} = setupScales(width, height);
+        const {xScale, yScale} = setupScales(width, height);
 
         // Draw axes
-        drawAxes(svg, margin, xScale, yScaleLHS, yScaleRHS, svgWidth, height, width, scaleFactor, aspectRatio);
+        drawAxes(svg, margin, xScale, yScale, svgWidth, height, width, scaleFactor, aspectRatio);
 
         // Draw data
-        plotArea(svg, xScale, yScaleLHS, yScaleRHS)
+        plotArea(svg, xScale, yScale)
 
         // Add gridlines
-        addGridlines(svg, yScaleLHS, width)
+        addGridlines(svg, yScale, width)
 
         // Draw data
-        plotData(svg, xScale, yScaleLHS, yScaleRHS)
+        plotData(svg, xScale, yScale)
 
         // Add tooltip
         drawTooltip(svg, xScale, height, width)
